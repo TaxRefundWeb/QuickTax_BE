@@ -1,5 +1,6 @@
 package com.quicktax.demo.api;
 
+import com.quicktax.demo.common.ApiResponse;
 import com.quicktax.demo.domain.Customer;
 import com.quicktax.demo.repo.CustomerRepository;
 import lombok.Getter;
@@ -19,13 +20,16 @@ public class CustomerController {
     }
 
     @GetMapping("/customers")
-    public List<CustomerDto> customers(@RequestParam(required = false) Long cpaId) {
+    public ApiResponse<CustomersResponse> customers(@RequestParam(required = false) Long cpaId) {
         List<Customer> list = (cpaId == null)
                 ? customerRepository.findAll()
                 : customerRepository.findByTaxCompany_CpaId(cpaId);
-
-        return list.stream().map(CustomerDto::new).toList();
+        List<CustomerDto> customers = list.stream().map(CustomerDto::new).toList();
+        return ApiResponse.ok(new CustomersResponse(customers));
     }
+
+    public record CustomersResponse(List<CustomerDto> customers) {}
+
 
     @Getter
     public static class CustomerDto {
