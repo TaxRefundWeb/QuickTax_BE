@@ -1,6 +1,8 @@
-package com.quicktax.demo.domain;
+package com.quicktax.demo.domain.auth;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -15,6 +17,8 @@ public class TaxCompany {
     @Column(name = "cpa_id")
     private Long cpaId;
 
+    @NotBlank
+    @Size(max = 255)
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
@@ -22,4 +26,3 @@ public class TaxCompany {
         this.password = password;
     }
 }
-
