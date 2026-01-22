@@ -1,6 +1,6 @@
 package com.quicktax.demo.repo;
 
-import com.quicktax.demo.domain.Customer;
+import com.quicktax.demo.domain.customer.Customer;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

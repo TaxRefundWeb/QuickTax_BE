@@ -1,9 +1,15 @@
-package com.quicktax.demo.domain;
+package com.quicktax.demo.domain.customer;
 
 import com.quicktax.demo.domain.auth.TaxCompany;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
 
 @Entity
 @Table(
@@ -11,7 +17,10 @@ import lombok.NoArgsConstructor;
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_customer_cpa_rrn",
                 columnNames = {"cpa_id", "rrn"}
-        )
+        ),
+        indexes = {
+                @Index(name = "idx_customer_cpa_id", columnList = "cpa_id")
+        }
 )
 @Getter
 @NoArgsConstructor
@@ -26,27 +35,39 @@ public class Customer {
     @JoinColumn(name = "cpa_id", nullable = false)
     private TaxCompany taxCompany;
 
+    @NotBlank
+    @Size(max = 20)
     @Column(name = "name", nullable = false, length = 20)
     private String name;
 
+    @Size(max = 200)
     @Column(name = "address", length = 200)
     private String address;
 
+    @NotBlank
     @Column(name = "rrn", nullable = false, columnDefinition = "text")
     private String rrn;
 
+    @Size(max = 20)
     @Column(name = "bank", length = 20)
     private String bank;
 
     @Column(name = "bank_number", columnDefinition = "text")
     private String bankNumber;
 
+    @NotBlank
+    @Size(max = 3)
     @Column(name = "nationality_code", nullable = false, length = 3)
     private String nationalityCode;
 
+    @NotBlank
+    @Size(max = 50)
     @Column(name = "nationality_name", nullable = false, length = 50)
     private String nationalityName;
 
+    @NotNull
+    @Min(0)
+    @Max(100)
     @Column(name = "final_fee_percent", nullable = false)
     private Integer finalFeePercent;
 
