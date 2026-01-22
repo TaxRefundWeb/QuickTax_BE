@@ -15,10 +15,11 @@ public class TaxCompany {
     @Column(name = "cpa_id")
     private Long cpaId;
 
-    @Column(name = "name", nullable = false, length = 50)
-    private String name;
+    @Column(name = "password", nullable = false, length = 255)
+    private String password;
 
-    public TaxCompany(String name) {
-        this.name = name;
+    public TaxCompany(String password) {
+        this.password = password;
     }
 }
+
