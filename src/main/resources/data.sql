@@ -3,7 +3,7 @@
 INSERT INTO tax_company (cpa_id, password)
 VALUES
   (1, '$2a$10$dummyhashdummyhashdummyhashdummyhashdummyhashdummyhash'),
-  (2, '$2a$10$dummyhashdummyhashdummyhashdummyhashdummyhashdummyhash')
+  (2, '$2a$10$FwsNz9ZIPeDePsZlRXagk.mz1EgNwjXZ1SCLMHi3cmTIDQPZDPQMa') -- 비밀번호 1234
 ON CONFLICT (cpa_id)
 DO UPDATE SET password = EXCLUDED.password;
 
