@@ -48,9 +48,8 @@ public class MainService {
      */
     @Transactional
     public Long createCustomer(Long cpaId, CustomerCreateRequest request) {
-        // 세무사 정보가 없을 경우 전역 예외 처리 규격에 맞춰 에러 던짐
         TaxCompany taxCompany = taxCompanyRepository.findById(cpaId)
-                .orElseThrow(() -> new ApiException(ErrorCode.BADREQ400)); // 혹은 적절한 에러코드
+                .orElseThrow(() -> new ApiException(ErrorCode.BADREQ400));
 
         Customer customer = Customer.builder()
                 .name(request.getName())
@@ -68,24 +67,14 @@ public class MainService {
     }
 
     /**
-     * 3. 고객 이전 기록 열람 (보안 검증 및 에러 처리 통합)
+     * 3. 고객 이전 기록 열람
      */
     @Transactional(readOnly = true)
     public PastDataResponse getCustomerPastData(Long cpaId, Long customerId) {
+        checkCustomerOwnership(cpaId, customerId);
 
-        // [404 에러 처리] 해당 고객이 DB에 존재하지 않는 경우
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ApiException(ErrorCode.COMMON404));
-
-        // [403 에러 처리] 고객은 존재하나, 로그인한 세무사(cpaId)가 담당자가 아닌 경우
-        if (!customer.getTaxCompany().getCpaId().equals(cpaId)) {
-            throw new ApiException(ErrorCode.AUTH403);
-        }
-
-        // 해당 고객의 모든 과거 환급 사례 조회
         List<RefundCase> refundCases = refundCaseRepository.findByCustomer_CustomerId(customerId);
 
-        // DTO 변환 (동적 리스트 생성)
         List<PastDataDto> pastDataList = refundCases.stream()
                 .map(refundCase -> PastDataDto.builder()
                         .caseId(refundCase.getCaseId())
@@ -97,6 +86,70 @@ public class MainService {
                 .collect(Collectors.toList());
 
         return new PastDataResponse(pastDataList);
+    }
+
+    /**
+     * 4. 고객 기본 정보 조회
+     * - 타입 오류 해결: Integer 필드를 String.valueOf()로 변환
+     */
+    @Transactional(readOnly = true)
+    public CustomerDetailResponse getCustomerDetail(Long cpaId, Long customerId) {
+        Customer customer = checkCustomerOwnership(cpaId, customerId);
+
+        return CustomerDetailResponse.builder()
+                .name(customer.getName())
+                .rrn(customer.getRrn())
+                .phone("010-0000-0000") // TODO: 엔티티에 phone 필드 추가 시 변경
+                .address(customer.getAddress())
+                .bank(customer.getBank())
+                .bankNumber(customer.getBankNumber())
+                .nationalityCode(customer.getNationalityCode())
+                .nationalityName(customer.getNationalityName())
+                .finalFeePercent(String.valueOf(customer.getFinalFeePercent())) // 💡 String으로 명시적 변환
+                .build();
+    }
+
+    /**
+     * 5. 고객 기본 정보 수정 및 결과 반환
+     * - 타입 오류 해결: 빌더 내 finalFeePercent를 String.valueOf()로 처리
+     */
+    @Transactional
+    public CustomerDetailResponse updateCustomerInfo(Long cpaId, Long customerId, CustomerUpdateRequest request) {
+        Customer customer = checkCustomerOwnership(cpaId, customerId);
+
+        // 엔티티 수정 (String -> Integer 변환 적용)
+        customer.updateBasicInfo(
+                request.getAddress(),
+                request.getBank(),
+                request.getBankNumber(),
+                Integer.parseInt(request.getFinalFeePercent())
+        );
+
+        // 수정된 결과를 다시 DTO 규격(모두 String)에 맞춰 반환
+        return CustomerDetailResponse.builder()
+                .name(customer.getName())
+                .rrn(customer.getRrn())
+                .phone(request.getPhone())
+                .address(customer.getAddress())
+                .bank(customer.getBank())
+                .bankNumber(customer.getBankNumber())
+                .nationalityCode(customer.getNationalityCode())
+                .nationalityName(customer.getNationalityName())
+                .finalFeePercent(String.valueOf(customer.getFinalFeePercent())) // 💡 String으로 명시적 변환
+                .build();
+    }
+
+    /**
+     * [공통 로직] 고객 존재 여부 및 세무사 권한 검증
+     */
+    private Customer checkCustomerOwnership(Long cpaId, Long customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new ApiException(ErrorCode.COMMON404));
+
+        if (!customer.getTaxCompany().getCpaId().equals(cpaId)) {
+            throw new ApiException(ErrorCode.AUTH403);
+        }
+        return customer;
     }
 
     private String formatBirthDate(String rrn) {

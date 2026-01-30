@@ -95,4 +95,15 @@ public class Customer {
         this.nationalityName = nationalityName;
         this.finalFeePercent = finalFeePercent;
     }
+
+    // 💡 에러를 해결해 줄 구원자 메서드 등장!
+    /**
+     * 고객 기본 정보 업데이트 (조회 후 수정 시 사용)
+     */
+    public void updateBasicInfo(String address, String bank, String bankNumber, Integer finalFeePercent) {
+        this.address = address;
+        this.bank = bank;
+        this.bankNumber = bankNumber;
+        this.finalFeePercent = finalFeePercent;
+    }
 }
