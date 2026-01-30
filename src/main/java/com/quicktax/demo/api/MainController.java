@@ -28,7 +28,7 @@ public class MainController {
      * 2. 신규 고객 등록
      * 새로운 고객의 인적 사항 및 수수료 정보를 등록합니다.
      */
-    @PostMapping("/customers")
+    @PostMapping("/customers/new")
     public ApiResponse<Long> createCustomer(
             @AuthenticationPrincipal Long cpaId,
             @RequestBody CustomerCreateRequest request) {
