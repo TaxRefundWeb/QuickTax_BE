@@ -10,9 +10,15 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:3000") // 프론트엔드 주소 (와일드카드 * 사용 불가)
+                .allowedOriginPatterns(
+                        "http://localhost:*",
+                        "https://stg.quicktax.site",
+                        "https://quicktax.site",
+                        "https://www.quicktax.site",
+                        "https://api.quicktax.site"
+                )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true); // 쿠키/인증 정보를 허용
+                .allowCredentials(true);
     }
 }

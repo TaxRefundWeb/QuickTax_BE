@@ -136,9 +136,13 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOriginPatterns(List.of(
-            "http://localhost:*",
-            "https://api.quicktax.site"
+                "http://localhost:*",
+                "https://stg.quicktax.site",
+                "https://quicktax.site",
+                "https://www.quicktax.site",
+                "https://api.quicktax.site"
         ));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
