@@ -22,16 +22,15 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push Docker image (SHA + latest)
+      - name: Build and push Docker image (sha + latest)
         env:
           ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           set -e
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker tag  $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
       - name: Deploy on EC2 via SSH
@@ -41,8 +40,13 @@ jobs:
           SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           IMAGE_TAG: ${{ github.sha }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          APP_PROFILE: stg
         run: |
           set -e
           echo "$SSH_KEY" > key.pem
           chmod 600 key.pem
-          ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "bash /home/ec2-user/deploy.sh $IMAGE_TAG '$DB_PASSWORD'"
+
+          # deploy.sh 시그니처 (권장):
+          #   /home/ec2-user/deploy.sh <image_tag> <db_password> <profile>
+          ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "bash /home/ec2-user/deploy.sh '$IMAGE_TAG' '$DB_PASSWORD' '$APP_PROFILE'"
+
