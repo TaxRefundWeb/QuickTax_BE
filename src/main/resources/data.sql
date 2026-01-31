@@ -2,7 +2,7 @@
 -- tax_company 예
 INSERT INTO tax_company (cpa_id, password)
 VALUES
-  (1, '$2a$10$dummyhashdummyhashdummyhashdummyhashdummyhashdummyhash'),
+  (1, '$2a$10$FwsNz9ZIPeDePsZlRXagk.mz1EgNwjXZ1SCLMHi3cmTIDQPZDPQMa'),
   (2, '$2a$10$FwsNz9ZIPeDePsZlRXagk.mz1EgNwjXZ1SCLMHi3cmTIDQPZDPQMa') -- 비밀번호 1234
 ON CONFLICT (cpa_id)
 DO UPDATE SET password = EXCLUDED.password;
@@ -16,3 +16,10 @@ VALUES
   ('최서연', '대구광역시 수성구 동대구로 10', '950228-4567890', 'KAKAO', '3333-12-9876543', 'KOR', 'Korea, Republic of', 18, 1),
   ('정우진', '인천광역시 연수구 송도과학로 88', '870915-5678901', 'WOORI', '1002-345-678901', 'KOR', 'Korea, Republic of', 20, 1)
 ON CONFLICT (cpa_id, rrn) DO NOTHING;
+
+-- ID가 3번인 고객에 대한 과거 기록 데이터
+INSERT INTO refund_case (case_date, scenario_code, determined_tax_amount, refund_amount, customer_id)
+VALUES ('2026-01-28', '청년 감면', 4444000, 44000, 3);
+
+INSERT INTO refund_case (case_date, scenario_code, determined_tax_amount, refund_amount, customer_id)
+VALUES ('2025-01-28', '자녀 감면', 4444000, 44000, 3);
