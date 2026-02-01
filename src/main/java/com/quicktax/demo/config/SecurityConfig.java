@@ -89,29 +89,22 @@ public class SecurityConfig {
         response.getWriter().write(result);
     }
 
-    /**
-     * ✅ CORS 설정 수정
-     * - 배포 도메인(api.quicktax.site 및 프론트 도메인) 허용 패턴 추가
-     * - PATCH 메서드 허용 추가
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // 💡 허용할 도메인 패턴 수정
+        // 💡 배포 및 로컬 도메인 허용 패턴 적용
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
                 "https://api.quicktax.site",
-                "https://quicktax.site",     // 프론트엔드 메인 도메인
-                "https://*.quicktax.site"    // 모든 서브도메인 허용
+                "https://quicktax.site",
+                "https://*.quicktax.site"
         ));
 
         // 💡 PATCH 메서드 명시적 추가
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-
-        // JWT 토큰이나 쿠키 관련 헤더 노출
         config.setExposedHeaders(List.of("Set-Cookie", "Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

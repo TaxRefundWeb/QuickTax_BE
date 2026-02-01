@@ -1,7 +1,11 @@
 package com.quicktax.demo.config;
 
+import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.util.JwtUtil;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -51,25 +55,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
 
         } catch (ExpiredJwtException e) {
-            // 💡 토큰 시간이 만료되었을 때 실행되는 블록
-            sendErrorResponse(response, "AUTH401", "로그인 세션이 만료되었습니다. 다시 로그인해주세요.");
+            // 💡 만료된 경우: ErrorCode.TOKEN_EXPIRED (HTTP 401)
+            sendErrorResponse(response, ErrorCode.TOKEN_EXPIRED);
+        } catch (SignatureException | MalformedJwtException | UnsupportedJwtException e) {
+            // 💡 위조/손상된 경우: ErrorCode.TOKEN_INVALID (HTTP 403)
+            sendErrorResponse(response, ErrorCode.TOKEN_INVALID);
+        } catch (IllegalArgumentException e) {
+            // 💡 토큰이 비어있거나 잘못된 경우
+            sendErrorResponse(response, ErrorCode.BADREQ400);
         } catch (Exception e) {
-            // 💡 그 외 잘못된 토큰 등 모든 인증 관련 예외 처리
-            sendErrorResponse(response, "AUTH403", "인증 정보가 유효하지 않습니다.");
+            // 💡 그 외 알 수 없는 오류
+            sendErrorResponse(response, ErrorCode.AUTH403);
         }
     }
 
     /**
-     * 필터 단계에서 발생한 에러를 JSON 응답으로 변환하여 전송
+     * ✅ 수정된 에러 응답 메서드
+     * - ErrorCode Enum 하나만 받아서 Status와 Body를 모두 세팅합니다.
+     * - 더 이상 하드코딩된 401을 보내지 않습니다.
      */
-    private void sendErrorResponse(HttpServletResponse response, String code, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
+    private void sendErrorResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+        // 1. Enum에 정의된 HTTP Status(401, 403 등)를 그대로 설정
+        response.setStatus(errorCode.getStatus().value());
         response.setContentType("application/json;charset=UTF-8");
 
-        // 약속한 공통 응답 포맷 (isSuccess, code, message, result)
+        // 2. Enum에 정의된 코드(AUTH401..)와 메시지 사용
         String json = String.format(
                 "{\"isSuccess\":false, \"code\":\"%s\", \"message\":\"%s\", \"result\":null}",
-                code, message
+                errorCode.getCode(),
+                errorCode.getMessage()
         );
 
         response.getWriter().write(json);
