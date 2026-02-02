@@ -12,6 +12,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -30,9 +32,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        // 💡 1. 헤더가 아닌 '쿠키'에서 토큰을 추출합니다.
         String token = resolveTokenFromCookie(request);
 
-        // 💡 토큰이 있을 때만 검증 로직 수행 (try-catch 범위를 최소화)
+        // 2. 토큰이 있는 경우에만 검증 로직 수행
         if (token != null) {
             try {
                 if (jwtUtil.validateToken(token)) {
@@ -42,28 +45,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             } catch (ExpiredJwtException e) {
-                // 토큰 만료 -> 응답 보내고 여기서 필터 종료 (return)
+                // 토큰 만료 -> 401 응답 후 필터 중단
                 sendErrorResponse(response, ErrorCode.TOKEN_EXPIRED);
                 return;
             } catch (SignatureException | MalformedJwtException | UnsupportedJwtException e) {
-                // 토큰 위조 -> 응답 보내고 여기서 필터 종료 (return)
+                // 토큰 위조/손상 -> 403 응답 후 필터 중단
                 sendErrorResponse(response, ErrorCode.TOKEN_INVALID);
                 return;
             } catch (Exception e) {
-                // 기타 인증 에러 -> 응답 보내고 여기서 필터 종료 (return)
+                // 기타 에러 -> 403 응답 후 필터 중단
                 sendErrorResponse(response, ErrorCode.AUTH403);
                 return;
             }
         }
 
-        // 💡 중요: 필터 체인 실행은 try-catch 바깥에서!
-        // (토큰이 없거나 검증을 통과했으면 다음 단계로 진행)
+        // 3. 토큰이 없거나 검증을 통과했으면 다음 필터로 진행
+        // (Swagger나 비로그인 허용 경로는 여기서 통과됨)
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * ✅ 핵심 수정: Authorization 헤더 대신 Cookie에서 accessToken을 찾음
+     */
     private String resolveTokenFromCookie(HttpServletRequest request) {
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
                 if ("accessToken".equals(cookie.getName())) {
                     return cookie.getValue();
                 }
