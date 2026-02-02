@@ -6,6 +6,8 @@ import com.quicktax.demo.dto.RefundPageResponse;
 import com.quicktax.demo.dto.RefundYearRequest;
 import com.quicktax.demo.dto.refundInput.WithholdingUploadRequest;
 import com.quicktax.demo.service.refund.RefundSelectionService;
+import io.swagger.v3.oas.annotations.Operation; // 💡 import 추가
+import io.swagger.v3.oas.annotations.tags.Tag; // 💡 import 추가
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,18 +17,15 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-// 💡 기본 경로를 /api/refund -> /api 로 변경 (하위 경로 유연성 확보)
 @RequestMapping("/api")
 @RequiredArgsConstructor
+@Tag(name = "3. 경정청구(Refund)", description = "기간 선택, 상세 정보 입력, 서류 업로드 API")
 public class RefundController {
 
     private final RefundSelectionService refundSelectionService;
 
-    /**
-     * 1. 경정청구 기간 선택 (기존: /selection -> 변경: /refund-selection)
-     * POST /api/refund-selection
-     */
     @PostMapping("/refund-selection")
+    @Operation(summary = "경정청구 기간 선택", description = "시작일과 종료일을 입력하면 청구 가능한 연도 리스트와 페이지 수를 반환합니다.")
     public ApiResponse<RefundPageResponse> selectRefundYears(
             @AuthenticationPrincipal Long cpaId,
             @RequestBody RefundYearRequest request) {
@@ -34,11 +33,8 @@ public class RefundController {
         return ApiResponse.ok(refundSelectionService.configureRefundPages(cpaId, request));
     }
 
-    /**
-     * 2. 경정청구 상세 정보 입력 (기존: /info -> 변경: /refund-claims)
-     * POST /api/refund-claims
-     */
     @PostMapping("/refund-claims")
+    @Operation(summary = "상세 정보 입력", description = "법인명, 근무기간, 가족관계(배우자/자녀) 등 상세 정보를 저장합니다.")
     public ApiResponse<String> inputRefundInfo(
             @AuthenticationPrincipal Long cpaId,
             @RequestBody RefundInputRequest request) {
@@ -47,11 +43,8 @@ public class RefundController {
         return ApiResponse.ok("정보 입력이 완료되었습니다.");
     }
 
-    /**
-     * 3. 원천징수 PDF 업로드 (기존: /receipts/upload -> 변경: /documents)
-     * POST /api/documents
-     */
     @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "서류 업로드 (PDF)", description = "원천징수영수증 PDF 파일들과 메타데이터(JSON)를 함께 업로드합니다.")
     public ApiResponse<String> uploadDocuments(
             @AuthenticationPrincipal Long cpaId,
             @RequestPart("info") WithholdingUploadRequest request,
