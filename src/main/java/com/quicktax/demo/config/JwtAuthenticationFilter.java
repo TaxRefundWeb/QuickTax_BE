@@ -30,56 +30,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // 1. 쿠키에서 토큰 추출
-        String token = null;
+        String token = resolveTokenFromCookie(request);
+
+        // 💡 토큰이 있을 때만 검증 로직 수행 (try-catch 범위를 최소화)
+        if (token != null) {
+            try {
+                if (jwtUtil.validateToken(token)) {
+                    Long cpaId = jwtUtil.extractCpaId(token);
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(cpaId, null, Collections.emptyList());
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (ExpiredJwtException e) {
+                // 토큰 만료 -> 응답 보내고 여기서 필터 종료 (return)
+                sendErrorResponse(response, ErrorCode.TOKEN_EXPIRED);
+                return;
+            } catch (SignatureException | MalformedJwtException | UnsupportedJwtException e) {
+                // 토큰 위조 -> 응답 보내고 여기서 필터 종료 (return)
+                sendErrorResponse(response, ErrorCode.TOKEN_INVALID);
+                return;
+            } catch (Exception e) {
+                // 기타 인증 에러 -> 응답 보내고 여기서 필터 종료 (return)
+                sendErrorResponse(response, ErrorCode.AUTH403);
+                return;
+            }
+        }
+
+        // 💡 중요: 필터 체인 실행은 try-catch 바깥에서!
+        // (토큰이 없거나 검증을 통과했으면 다음 단계로 진행)
+        filterChain.doFilter(request, response);
+    }
+
+    private String resolveTokenFromCookie(HttpServletRequest request) {
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if ("accessToken".equals(cookie.getName())) {
-                    token = cookie.getValue();
+                    return cookie.getValue();
                 }
             }
         }
-
-        try {
-            // 2. 토큰 검증 및 인증 처리
-            if (token != null && jwtUtil.validateToken(token)) {
-                Long cpaId = jwtUtil.extractCpaId(token);
-
-                // 인증 객체 생성 및 ContextHolder에 등록
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(cpaId, null, Collections.emptyList());
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
-
-            // 3. 정상적인 경우 다음 필터로 진행
-            filterChain.doFilter(request, response);
-
-        } catch (ExpiredJwtException e) {
-            // 💡 만료된 경우: ErrorCode.TOKEN_EXPIRED (HTTP 401)
-            sendErrorResponse(response, ErrorCode.TOKEN_EXPIRED);
-        } catch (SignatureException | MalformedJwtException | UnsupportedJwtException e) {
-            // 💡 위조/손상된 경우: ErrorCode.TOKEN_INVALID (HTTP 403)
-            sendErrorResponse(response, ErrorCode.TOKEN_INVALID);
-        } catch (IllegalArgumentException e) {
-            // 💡 토큰이 비어있거나 잘못된 경우
-            sendErrorResponse(response, ErrorCode.BADREQ400);
-        } catch (Exception e) {
-            // 💡 그 외 알 수 없는 오류
-            sendErrorResponse(response, ErrorCode.AUTH403);
-        }
+        return null;
     }
 
-    /**
-     * ✅ 수정된 에러 응답 메서드
-     * - ErrorCode Enum 하나만 받아서 Status와 Body를 모두 세팅합니다.
-     * - 더 이상 하드코딩된 401을 보내지 않습니다.
-     */
     private void sendErrorResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException {
-        // 1. Enum에 정의된 HTTP Status(401, 403 등)를 그대로 설정
         response.setStatus(errorCode.getStatus().value());
         response.setContentType("application/json;charset=UTF-8");
 
-        // 2. Enum에 정의된 코드(AUTH401..)와 메시지 사용
         String json = String.format(
                 "{\"isSuccess\":false, \"code\":\"%s\", \"message\":\"%s\", \"result\":null}",
                 errorCode.getCode(),

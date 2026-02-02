@@ -9,16 +9,17 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/main")
+@RequestMapping("/api") // 💡 "/api/main"에서 "/main"을 제거했습니다.
 @RequiredArgsConstructor
 public class MainController {
 
-    // 💡 분리된 두 서비스를 각각 주입받습니다.
     private final CustomerService customerService;
     private final RefundService refundService;
 
     /**
      * 1. 고객 목록 조회
+     * 변경 전: GET /api/main/customers
+     * 변경 후: GET /api/customers
      */
     @GetMapping("/customers")
     public ApiResponse<CustomersResponse> getMyCustomers(@AuthenticationPrincipal Long cpaId) {
@@ -27,7 +28,8 @@ public class MainController {
 
     /**
      * 2. 신규 고객 등록
-     * 경로: /api/main/customers/new
+     * 변경 전: POST /api/main/customers/new
+     * 변경 후: POST /api/customers/new
      */
     @PostMapping("/customers/new")
     public ApiResponse<Long> createCustomer(
@@ -39,7 +41,8 @@ public class MainController {
     }
 
     /**
-     * 3. 고객 이전 기록 열람 (RefundService 호출)
+     * 3. 고객 이전 기록 열람
+     * 변경 후: GET /api/customers/{customerId}/past
      */
     @GetMapping("/customers/{customerId}/past")
     public ApiResponse<PastDataResponse> getPastRecords(
@@ -50,7 +53,8 @@ public class MainController {
     }
 
     /**
-     * 4. 고객 기본 정보 조회 (CustomerService 호출)
+     * 4. 고객 기본 정보 조회
+     * 변경 후: GET /api/customers/{customerId}
      */
     @GetMapping("/customers/{customerId}")
     public ApiResponse<CustomerDetailResponse> getCustomerDetail(
@@ -61,7 +65,8 @@ public class MainController {
     }
 
     /**
-     * 5. 고객 기본 정보 수정 (CustomerService 호출)
+     * 5. 고객 기본 정보 수정
+     * 변경 후: PATCH /api/customers/{customerId}
      */
     @PatchMapping("/customers/{customerId}")
     public ApiResponse<CustomerDetailResponse> updateCustomer(
