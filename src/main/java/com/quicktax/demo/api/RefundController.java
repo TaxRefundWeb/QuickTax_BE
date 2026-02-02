@@ -4,7 +4,7 @@ import com.quicktax.demo.common.ApiResponse;
 import com.quicktax.demo.dto.RefundInputRequest;
 import com.quicktax.demo.dto.RefundPageResponse;
 import com.quicktax.demo.dto.RefundYearRequest;
-import com.quicktax.demo.dto.refundInput.WithholdingUploadRequest; // 💡 DTO import
+import com.quicktax.demo.dto.refundInput.WithholdingUploadRequest;
 import com.quicktax.demo.service.refund.RefundSelectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -15,17 +15,18 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/refund")
+// 💡 기본 경로를 /api/refund -> /api 로 변경 (하위 경로 유연성 확보)
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class RefundController {
 
     private final RefundSelectionService refundSelectionService;
 
     /**
-     * 1. 경정청구 기간 선택 (페이지 수 계산)
-     * POST /api/refund/selection
+     * 1. 경정청구 기간 선택 (기존: /selection -> 변경: /refund-selection)
+     * POST /api/refund-selection
      */
-    @PostMapping("/selection")
+    @PostMapping("/refund-selection")
     public ApiResponse<RefundPageResponse> selectRefundYears(
             @AuthenticationPrincipal Long cpaId,
             @RequestBody RefundYearRequest request) {
@@ -34,10 +35,10 @@ public class RefundController {
     }
 
     /**
-     * 2. 경정청구 상세 정보 입력 (배우자/자녀 포함)
-     * POST /api/refund/info
+     * 2. 경정청구 상세 정보 입력 (기존: /info -> 변경: /refund-claims)
+     * POST /api/refund-claims
      */
-    @PostMapping("/info")
+    @PostMapping("/refund-claims")
     public ApiResponse<String> inputRefundInfo(
             @AuthenticationPrincipal Long cpaId,
             @RequestBody RefundInputRequest request) {
@@ -47,18 +48,18 @@ public class RefundController {
     }
 
     /**
-     * 3. 원천징수영수증 PDF 파일 업로드 (JSON + File)
-     * POST /api/refund/receipts/upload
+     * 3. 원천징수 PDF 업로드 (기존: /receipts/upload -> 변경: /documents)
+     * POST /api/documents
      */
-    @PostMapping(value = "/receipts/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<String> uploadWithholdingReceipts(
+    @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<String> uploadDocuments(
             @AuthenticationPrincipal Long cpaId,
-            @RequestPart("info") WithholdingUploadRequest request,  // 📝 JSON 데이터
-            @RequestPart("files") List<MultipartFile> files         // 📂 PDF 파일 리스트
+            @RequestPart("info") WithholdingUploadRequest request,
+            @RequestPart("files") List<MultipartFile> files
     ) {
 
         refundSelectionService.uploadWithholdingFiles(cpaId, request, files);
 
-        return ApiResponse.ok("총 " + files.size() + "개의 원천징수영수증 파일이 업로드되었습니다.");
+        return ApiResponse.ok("총 " + files.size() + "개의 문서가 업로드되었습니다.");
     }
 }
