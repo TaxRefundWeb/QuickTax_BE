@@ -4,40 +4,47 @@ import com.quicktax.demo.common.ApiResponse;
 import com.quicktax.demo.dto.LoginRequest;
 import com.quicktax.demo.service.auth.AuthService;
 import com.quicktax.demo.util.JwtUtil;
+import io.swagger.v3.oas.annotations.Operation; // 💡 import 추가
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Duration; // 💡 Duration 클래스 import 필수
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "1. 인증(Auth)", description = "회원가입, 로그인, 토큰 재발급 API")
 public class AuthController {
 
     private final AuthService authService;
     private final JwtUtil jwtUtil;
 
-    // application.properties에서 설정을 가져옴 (로컬: localhost, 배포: .quicktax.site)
     @Value("${cookie.domain}")
     private String cookieDomain;
 
     @PostMapping("/login")
+    // 💡 Operation 추가: 쿠키 발급 사실을 명시
+    @Operation(summary = "CPA 로그인", description = "아이디와 비밀번호를 검증하여 로그인합니다. 성공 시 JWT 토큰이 **HttpOnly 쿠키('accessToken')**에 담겨 반환됩니다.")
     public ApiResponse<String> login(@RequestBody LoginRequest request, HttpServletResponse response) {
-        // 1. 로그인 로직 수행 (ID/PW 검증)
+        // 1. 로그인 로직 수행
         String token = authService.login(request.getCpaId(), request.getPassword());
 
-        // 2. 🍪 쿠키 생성 (요청하신 설정 적용)
+        // 2. 쿠키 생성
         ResponseCookie cookie = ResponseCookie.from("accessToken", token)
-                .httpOnly(true)              // 자바스크립트 접근 차단 (XSS 방지)
-                .secure(true)                // HTTPS 전송 강제 (SameSite=None 필수)
-                .sameSite("None")            // 서로 다른 도메인(프론트/백) 간 전송 허용
-                .path("/")                   // 모든 경로에서 쿠키 유효
-                .domain(cookieDomain)        // 환경에 맞는 도메인 설정 (.quicktax.site 등)
-                .maxAge(Duration.ofHours(10)) // 💡 유효기간 10시간으로 설정
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .domain(cookieDomain)
+                .maxAge(Duration.ofHours(10))
                 .build();
 
         // 3. 응답 헤더에 쿠키 추가
