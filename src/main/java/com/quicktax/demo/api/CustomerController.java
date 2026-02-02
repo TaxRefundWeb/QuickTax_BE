@@ -1,58 +1,86 @@
 package com.quicktax.demo.api;
 
 import com.quicktax.demo.common.ApiResponse;
-import com.quicktax.demo.domain.customer.Customer;
-import com.quicktax.demo.repo.CustomerRepository;
-import io.swagger.v3.oas.annotations.Operation; // 💡 import 추가
+import com.quicktax.demo.dto.*;
+import com.quicktax.demo.service.customer.CustomerService;
+import com.quicktax.demo.service.past.RefundService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Getter;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-// 💡 Tag 설명 보완
-@Tag(name = "2. 고객(Customer)", description = "고객 목록 조회 및 관리 API")
+@RequestMapping("/api")
+@RequiredArgsConstructor
+@Tag(name = "2. 고객(Customer)", description = "고객 관리(등록, 조회, 수정, 과거기록) API")
 public class CustomerController {
 
-    private final CustomerRepository customerRepository;
+    private final CustomerService customerService;
+    private final RefundService refundService;
 
-    public CustomerController(CustomerRepository customerRepository) {
-        this.customerRepository = customerRepository;
-    }
-
+    /**
+     * 1. 고객 목록 조회
+     * GET /api/customers
+     */
     @GetMapping("/customers")
-    // 💡 Operation 추가: 파라미터 유무에 따른 동작 설명 포함
-    @Operation(summary = "고객 목록 조회", description = "전체 고객 목록을 조회하거나, 특정 CPA ID(cpaId)로 필터링하여 조회합니다.")
-    public ApiResponse<CustomersResponse> customers(@RequestParam(required = false) Long cpaId) {
-        List<Customer> list = (cpaId == null)
-                ? customerRepository.findAll()
-                : customerRepository.findByTaxCompany_CpaId(cpaId);
-        List<CustomerDto> customers = list.stream().map(CustomerDto::new).toList();
-        return ApiResponse.ok(new CustomersResponse(customers));
+    @Operation(summary = "고객 목록 조회", description = "로그인한 CPA가 담당하는 고객 목록을 조회합니다.")
+    public ApiResponse<CustomersResponse> getMyCustomers(@AuthenticationPrincipal Long cpaId) {
+        return ApiResponse.ok(customerService.getCustomerList(cpaId));
     }
 
-    public record CustomersResponse(List<CustomerDto> customers) {}
+    /**
+     * 2. 신규 고객 등록
+     * POST /api/customers/new
+     */
+    @PostMapping("/customers/new")
+    @Operation(summary = "신규 고객 등록", description = "새로운 고객 정보를 등록합니다.")
+    public ApiResponse<Long> createCustomer(
+            @AuthenticationPrincipal Long cpaId,
+            @RequestBody CustomerCreateRequest request) {
 
+        Long customerId = customerService.createCustomer(cpaId, request);
+        return ApiResponse.ok(customerId);
+    }
 
-    @Getter
-    public static class CustomerDto {
-        private final Long customerId;
-        private final Long cpaId;
-        private final String name;
-        private final String rrn;
-        private final String bank;
-        private final String bankNumber;
+    /**
+     * 3. 고객 이전 기록 열람
+     * GET /api/customers/{customerId}/past
+     */
+    @GetMapping("/customers/{customerId}/past")
+    @Operation(summary = "고객 이전 기록 열람", description = "특정 고객의 과거 환급 또는 세무 기록 데이터를 조회합니다.")
+    public ApiResponse<PastDataResponse> getPastRecords(
+            @AuthenticationPrincipal Long cpaId,
+            @PathVariable(name = "customerId") Long customerId) {
 
-        public CustomerDto(Customer c) {
-            this.customerId = c.getCustomerId();
-            this.cpaId = c.getTaxCompany().getCpaId();
-            this.name = c.getName();
-            this.rrn = c.getRrn();
-            this.bank = c.getBank();
-            this.bankNumber = c.getBankNumber();
-        }
+        return ApiResponse.ok(refundService.getCustomerPastData(cpaId, customerId));
+    }
+
+    /**
+     * 4. 고객 기본 정보 조회 (상세)
+     * GET /api/customers/{customerId}
+     */
+    @GetMapping("/customers/{customerId}")
+    @Operation(summary = "고객 기본 정보 조회", description = "특정 고객의 상세 정보(이름, 주민번호, 은행 정보 등)를 조회합니다.")
+    public ApiResponse<CustomerDetailResponse> getCustomerDetail(
+            @AuthenticationPrincipal Long cpaId,
+            @PathVariable(name = "customerId") Long customerId) {
+
+        return ApiResponse.ok(customerService.getCustomerDetail(cpaId, customerId));
+    }
+
+    /**
+     * 5. 고객 기본 정보 수정
+     * PATCH /api/customers/{customerId}
+     */
+    @PatchMapping("/customers/{customerId}")
+    @Operation(summary = "고객 기본 정보 수정", description = "특정 고객의 정보를 수정합니다. (변경할 필드만 요청 본문에 포함)")
+    public ApiResponse<CustomerDetailResponse> updateCustomer(
+            @AuthenticationPrincipal Long cpaId,
+            @PathVariable(name = "customerId") Long customerId,
+            @RequestBody CustomerUpdateRequest request) {
+
+        CustomerDetailResponse updatedDetail = customerService.updateCustomerInfo(cpaId, customerId, request);
+        return ApiResponse.ok(updatedDetail);
     }
 }
