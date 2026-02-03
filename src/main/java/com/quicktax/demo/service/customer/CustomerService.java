@@ -54,7 +54,8 @@ public class CustomerService {
                 .bankNumber(request.getBankNumber())
                 .nationalityCode(request.getNationalityCode())
                 .nationalityName(request.getNationalityName())
-                .finalFeePercent(Integer.parseInt(request.getFinalFeePercent()))
+                // 💡 [변경] Integer.parseInt 제거 -> String 그대로 저장
+                .finalFeePercent(request.getFinalFeePercent())
                 .taxCompany(taxCompany)
                 .build();
 
@@ -81,7 +82,8 @@ public class CustomerService {
                 request.getAddress(),
                 request.getBank(),
                 request.getBankNumber(),
-                Integer.parseInt(request.getFinalFeePercent())
+                // 💡 [변경] Integer.parseInt 제거 -> String 그대로 전달
+                request.getFinalFeePercent()
         );
 
         return buildDetailResponse(customer, request.getPhone());
@@ -110,7 +112,8 @@ public class CustomerService {
                 .bankNumber(customer.getBankNumber())
                 .nationalityCode(customer.getNationalityCode())
                 .nationalityName(customer.getNationalityName())
-                .finalFeePercent(String.valueOf(customer.getFinalFeePercent()))
+                // 💡 [변경] String.valueOf 제거 (이미 String 타입이므로)
+                .finalFeePercent(customer.getFinalFeePercent())
                 .build();
     }
 
