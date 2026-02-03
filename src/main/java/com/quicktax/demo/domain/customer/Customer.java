@@ -2,7 +2,10 @@ package com.quicktax.demo.domain.customer;
 
 import com.quicktax.demo.domain.auth.TaxCompany;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -65,12 +68,12 @@ public class Customer {
     @Column(name = "nationality_name", nullable = false, length = 50)
     private String nationalityName;
 
-    // 💡 [변경] Integer -> String으로 변경
-    // 숫자 범위 제한(@Min, @Max) 삭제 (문자열에는 적용 불가)
-    // 대신 길이를 넉넉하게 20자 정도로 설정 (예: "10%", "협의", "3.3" 등 수용)
-    @Size(max = 20)
-    @Column(name = "final_fee_percent", nullable = false, length = 20)
-    private String finalFeePercent;
+    // 💡 [복구] 다시 Integer 타입으로 변경 (DB의 INT 컬럼과 매칭)
+    @NotNull
+    @Min(0)
+    @Max(100)
+    @Column(name = "final_fee_percent", nullable = false)
+    private Integer finalFeePercent;
 
     public Customer(
             TaxCompany taxCompany,
@@ -81,7 +84,7 @@ public class Customer {
             String bankNumber,
             String nationalityCode,
             String nationalityName,
-            String finalFeePercent // 💡 [변경] 매개변수 타입 String
+            Integer finalFeePercent // 💡 매개변수도 Integer로 복구
     ) {
         this.taxCompany = taxCompany;
         this.name = name;
@@ -94,10 +97,8 @@ public class Customer {
         this.finalFeePercent = finalFeePercent;
     }
 
-    /**
-     * 고객 기본 정보 업데이트 (조회 후 수정 시 사용)
-     */
-    public void updateBasicInfo(String address, String bank, String bankNumber, String finalFeePercent) { // 💡 [변경] 매개변수 타입 String
+    // 💡 메서드 파라미터도 Integer로 복구
+    public void updateBasicInfo(String address, String bank, String bankNumber, Integer finalFeePercent) {
         this.address = address;
         this.bank = bank;
         this.bankNumber = bankNumber;

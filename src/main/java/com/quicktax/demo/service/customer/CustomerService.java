@@ -21,9 +21,7 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final TaxCompanyRepository taxCompanyRepository;
 
-    /**
-     * 1. 고객 목록 조회
-     */
+    // 1. 고객 목록 조회
     @Transactional(readOnly = true)
     public CustomersResponse getCustomerList(Long cpaId) {
         List<Customer> customers = customerRepository.findByTaxCompany_CpaId(cpaId);
@@ -38,13 +36,24 @@ public class CustomerService {
         return new CustomersResponse(customerDtos);
     }
 
-    /**
-     * 2. 신규 고객 등록
-     */
+    // 2. 신규 고객 등록
     @Transactional
     public Long createCustomer(Long cpaId, CustomerCreateRequest request) {
         TaxCompany taxCompany = taxCompanyRepository.findById(cpaId)
                 .orElseThrow(() -> new ApiException(ErrorCode.BADREQ400));
+
+        // 💡 안전한 변환 로직 (공백, % 제거 후 숫자 변환)
+        int feePercent = 0;
+        try {
+            String rawFee = request.getFinalFeePercent();
+            if (rawFee != null && !rawFee.isBlank()) {
+                // "10%" -> "10"으로 변환
+                feePercent = Integer.parseInt(rawFee.replace("%", "").trim());
+            }
+        } catch (NumberFormatException e) {
+            // 숫자가 아닐 경우 0으로 처리하거나 에러 발생 (여기선 0으로 방어)
+            feePercent = 0;
+        }
 
         Customer customer = Customer.builder()
                 .name(request.getName())
@@ -54,44 +63,46 @@ public class CustomerService {
                 .bankNumber(request.getBankNumber())
                 .nationalityCode(request.getNationalityCode())
                 .nationalityName(request.getNationalityName())
-                // 💡 [변경] Integer.parseInt 제거 -> String 그대로 저장
-                .finalFeePercent(request.getFinalFeePercent())
+                .finalFeePercent(feePercent) // 💡 Integer 값 저장
                 .taxCompany(taxCompany)
                 .build();
 
         return customerRepository.save(customer).getCustomerId();
     }
 
-    /**
-     * 3. 고객 상세 정보 조회
-     */
+    // 3. 고객 상세 정보 조회
     @Transactional(readOnly = true)
     public CustomerDetailResponse getCustomerDetail(Long cpaId, Long customerId) {
         Customer customer = checkCustomerOwnership(cpaId, customerId);
         return buildDetailResponse(customer, null);
     }
 
-    /**
-     * 4. 고객 정보 수정
-     */
+    // 4. 고객 정보 수정
     @Transactional
     public CustomerDetailResponse updateCustomerInfo(Long cpaId, Long customerId, CustomerUpdateRequest request) {
         Customer customer = checkCustomerOwnership(cpaId, customerId);
+
+        // 💡 수정 시에도 Integer 변환 필요
+        int feePercent = 0;
+        try {
+            String rawFee = request.getFinalFeePercent();
+            if (rawFee != null && !rawFee.isBlank()) {
+                feePercent = Integer.parseInt(rawFee.replace("%", "").trim());
+            }
+        } catch (NumberFormatException e) {
+            feePercent = 0;
+        }
 
         customer.updateBasicInfo(
                 request.getAddress(),
                 request.getBank(),
                 request.getBankNumber(),
-                // 💡 [변경] Integer.parseInt 제거 -> String 그대로 전달
-                request.getFinalFeePercent()
+                feePercent // 💡 Integer 값 전달
         );
 
         return buildDetailResponse(customer, request.getPhone());
     }
 
-    /**
-     * [공통/외부 노출] 고객 존재 여부 및 세무사 권한 검증
-     */
     public Customer checkCustomerOwnership(Long cpaId, Long customerId) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new ApiException(ErrorCode.COMMON404));
@@ -112,8 +123,7 @@ public class CustomerService {
                 .bankNumber(customer.getBankNumber())
                 .nationalityCode(customer.getNationalityCode())
                 .nationalityName(customer.getNationalityName())
-                // 💡 [변경] String.valueOf 제거 (이미 String 타입이므로)
-                .finalFeePercent(customer.getFinalFeePercent())
+                .finalFeePercent(String.valueOf(customer.getFinalFeePercent())) // Integer -> String 변환 (응답용)
                 .build();
     }
 
