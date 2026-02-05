@@ -1,6 +1,6 @@
 package com.quicktax.demo.domain.calc;
 
-import com.quicktax.demo.domain.cases.TaxCase;
+import com.quicktax.demo.domain.refund.RefundCase; // 💡 RefundCase Import
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,13 +18,16 @@ public class CaseCalcResult {
     @MapsId("caseId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "case_id", nullable = false)
-    private TaxCase taxCase;
+    private RefundCase refundCase; // 💡 TaxCase -> RefundCase로 변경
 
     @Column(name = "tax_base_amount")
     private Long taxBaseAmount;
 
     @Column(name = "calculated_tax_rate")
     private Long calculatedTaxRate;
+
+    @Column(name = "calculated_tax")
+    private Long calculatedTax; // 💡 추가된 필드
 
     @Column(name = "earned_income_amount")
     private Long earnedIncomeAmount;
@@ -53,12 +56,13 @@ public class CaseCalcResult {
     @Column(name = "scenario_text", length = 200)
     private String scenarioText;
 
+    // 생성자 수정
     public CaseCalcResult(
-            TaxCase taxCase,
+            RefundCase refundCase, // 💡 타입 변경
             Integer caseYear,
             String scenarioCode
     ) {
-        this.taxCase = taxCase;
-        this.id = new CaseCalcResultId(taxCase.getCaseId(), caseYear, scenarioCode);
+        this.refundCase = refundCase;
+        this.id = new CaseCalcResultId(refundCase.getCaseId(), caseYear, scenarioCode);
     }
 }
