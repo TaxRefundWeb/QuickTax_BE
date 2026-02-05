@@ -1,9 +1,10 @@
 package com.quicktax.demo.api;
 
 import com.quicktax.demo.common.ApiResponse;
-import com.quicktax.demo.dto.RefundInputRequest;
 import com.quicktax.demo.dto.RefundPageResponse;
+import com.quicktax.demo.dto.refundInput.RefundSaveResponse;
 import com.quicktax.demo.dto.RefundYearRequest;
+import com.quicktax.demo.dto.refundInput.RefundInputRequest;
 import com.quicktax.demo.dto.refundInput.WithholdingUploadRequest;
 import com.quicktax.demo.service.refund.RefundSelectionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,30 +28,29 @@ public class RefundController {
 
     /**
      * 1. 경정청구 기간 및 감면 정보 입력
-     * 변경사항: PathVariable로 customerId를 받고, 서비스에 전달하도록 수정
      */
     @PostMapping("/refund-selection/{customerId}")
     @Operation(summary = "경정청구 기간 및 감면 정보 입력", description = "청구 기간(시작/종료), 신청일, 감면 여부 등을 입력받아 대상 연도를 자동 계산하고, 다음 단계 구성을 위한 데이터를 반환합니다.")
     public ApiResponse<RefundPageResponse> selectRefundYears(
             @AuthenticationPrincipal Long cpaId,
-            @Parameter(description = "대상 고객 ID", required = true) @PathVariable Long customerId, // 💡 [수정] PathVariable 추가
+            @Parameter(description = "대상 고객 ID", required = true) @PathVariable Long customerId,
             @RequestBody RefundYearRequest request) {
 
-        // 💡 [수정] customerId를 포함하여 3개의 인자 전달
         return ApiResponse.ok(refundSelectionService.configureRefundPages(cpaId, customerId, request));
     }
 
     /**
-     * 2. 상세 정보 입력
+     * 2. 상세 정보 입력 (수정됨: 반환타입 RefundSaveResponse)
      */
-    @PostMapping("/refund-claims")
-    @Operation(summary = "상세 정보 입력", description = "법인명, 근무기간, 가족관계(배우자/자녀) 등 상세 정보를 저장합니다.")
-    public ApiResponse<String> inputRefundInfo(
+    @PostMapping("/refund-claims/{caseId}")
+    @Operation(summary = "상세 정보 입력", description = "연도별 근무지, 배우자, 자녀 정보를 입력받아 검증 후 저장하고, 저장된 연도 리스트를 반환합니다.")
+    public ApiResponse<RefundSaveResponse> inputRefundInfo(
             @AuthenticationPrincipal Long cpaId,
+            @Parameter(description = "생성된 Case ID", required = true) @PathVariable Long caseId,
             @RequestBody RefundInputRequest request) {
 
-        refundSelectionService.saveRefundInfo(cpaId, request);
-        return ApiResponse.ok("정보 입력이 완료되었습니다.");
+        // 💡 서비스 호출 결과를 그대로 반환 (saved_case_years 포함)
+        return ApiResponse.ok(refundSelectionService.saveRefundInfo(cpaId, caseId, request));
     }
 
     /**
