@@ -7,6 +7,7 @@ import com.quicktax.demo.dto.RefundYearRequest;
 import com.quicktax.demo.dto.refundInput.WithholdingUploadRequest;
 import com.quicktax.demo.service.refund.RefundSelectionService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -26,15 +27,17 @@ public class RefundController {
 
     /**
      * 1. 경정청구 기간 및 감면 정보 입력
-     * 변경사항: claim_year 리스트 대신 claim_date(신청일)를 입력받아 연도를 자동 계산
+     * 변경사항: PathVariable로 customerId를 받고, 서비스에 전달하도록 수정
      */
-    @PostMapping("/refund-selection")
+    @PostMapping("/refund-selection/{customerId}")
     @Operation(summary = "경정청구 기간 및 감면 정보 입력", description = "청구 기간(시작/종료), 신청일, 감면 여부 등을 입력받아 대상 연도를 자동 계산하고, 다음 단계 구성을 위한 데이터를 반환합니다.")
     public ApiResponse<RefundPageResponse> selectRefundYears(
             @AuthenticationPrincipal Long cpaId,
+            @Parameter(description = "대상 고객 ID", required = true) @PathVariable Long customerId, // 💡 [수정] PathVariable 추가
             @RequestBody RefundYearRequest request) {
 
-        return ApiResponse.ok(refundSelectionService.configureRefundPages(cpaId, request));
+        // 💡 [수정] customerId를 포함하여 3개의 인자 전달
+        return ApiResponse.ok(refundSelectionService.configureRefundPages(cpaId, customerId, request));
     }
 
     /**

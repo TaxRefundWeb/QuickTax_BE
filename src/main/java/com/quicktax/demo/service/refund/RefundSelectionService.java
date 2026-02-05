@@ -3,12 +3,14 @@ package com.quicktax.demo.service.refund;
 import com.quicktax.demo.common.ApiException;
 import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.domain.auth.TaxCompany;
+import com.quicktax.demo.domain.customer.Customer;
 import com.quicktax.demo.domain.refund.RefundCase;
 import com.quicktax.demo.dto.*;
 import com.quicktax.demo.dto.ChildInfo;
 import com.quicktax.demo.dto.RefundInputRequest;
 import com.quicktax.demo.dto.refundInput.RefundDetailInfo;
 import com.quicktax.demo.dto.refundInput.WithholdingUploadRequest;
+import com.quicktax.demo.repo.CustomerRepository;
 import com.quicktax.demo.repo.RefundCaseRepository;
 import com.quicktax.demo.repo.TaxCompanyRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,10 +29,11 @@ public class RefundSelectionService {
 
     private final RefundCaseRepository refundCaseRepository;
     private final TaxCompanyRepository taxCompanyRepository;
+    private final CustomerRepository customerRepository;
 
     // 1. 기간 선택 및 Case 생성 (Result에 caseId만 반환)
     @Transactional
-    public RefundPageResponse configureRefundPages(Long cpaId, RefundYearRequest request) {
+    public RefundPageResponse configureRefundPages(Long cpaId, Long customerId, RefundYearRequest request) { // 💡 customerId 추가
 
         // 1-1. 필수 값 검증
         if (request.getClaimFrom() == null || request.getClaimTo() == null) {
@@ -44,11 +47,17 @@ public class RefundSelectionService {
         }
 
         try {
-            // 1-2. 날짜 파싱 및 기간 검증
+            // 1-2. 고객 조회 및 권한 검증 (💡 추가된 로직)
+            Customer customer = customerRepository.findById(customerId)
+                    .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "존재하지 않는 고객입니다."));
+
+            if (!customer.getTaxCompany().getCpaId().equals(cpaId)) {
+                throw new ApiException(ErrorCode.AUTH403, "해당 고객에 대한 접근 권한이 없습니다.");
+            }
+
+            // 1-3. 날짜 파싱 및 기간 검증
             LocalDate fromDate = LocalDate.parse(request.getClaimFrom(), DateTimeFormatter.ISO_LOCAL_DATE);
             LocalDate toDate = LocalDate.parse(request.getClaimTo(), DateTimeFormatter.ISO_LOCAL_DATE);
-
-            // 💡 [추가] String(신청일) -> LocalDate 변환 변수 선언
             LocalDate caseDate = LocalDate.parse(request.getClaimDate(), DateTimeFormatter.ISO_LOCAL_DATE);
 
             int startYear = Math.min(fromDate.getYear(), toDate.getYear());
@@ -60,7 +69,7 @@ public class RefundSelectionService {
                 throw new ApiException(ErrorCode.BADREQ400, "최대 10년치까지만 한 번에 신청 가능합니다.");
             }
 
-            // 1-3. 감면 기한 데이터 정리
+            // 1-4. 감면 기한 데이터 정리
             String reductionStart = request.getReductionStart();
             String reductionEnd = request.getReductionEnd();
 
@@ -69,14 +78,12 @@ public class RefundSelectionService {
                 reductionEnd = null;
             }
 
-            // 1-4. DB 저장 (RefundCase 엔티티 생성)
-            TaxCompany taxCompany = taxCompanyRepository.findById(cpaId)
-                    .orElseThrow(() -> new ApiException(ErrorCode.BADREQ400, "CPA 정보를 찾을 수 없습니다."));
-
-            // RefundCase 빌더 사용
+            // 1-5. DB 저장 (RefundCase 엔티티 생성)
+            // 고객 정보(customer)와 세무법인(TaxCompany) 정보 모두 연결
             RefundCase refundCase = RefundCase.builder()
-                    .taxCompany(taxCompany)
-                    .caseDate(caseDate) // 💡 위에서 선언한 변수 사용
+                    .taxCompany(customer.getTaxCompany()) // 고객 정보에서 TaxCompany 가져옴 (일관성 유지)
+                    .customer(customer) // 💡 조회한 customer 객체 사용
+                    .caseDate(caseDate)
                     .claimStart(request.getClaimFrom())
                     .claimEnd(request.getClaimTo())
                     .reductionYn(request.getReductionYn())
@@ -88,7 +95,7 @@ public class RefundSelectionService {
             // INSERT 실행 및 ID 획득
             RefundCase savedCase = refundCaseRepository.save(refundCase);
 
-            // 1-5. 결과 반환 (오직 caseId만 포함)
+            // 1-6. 결과 반환 (오직 caseId만 포함)
             return new RefundPageResponse(savedCase.getCaseId());
 
         } catch (DateTimeParseException e) {
