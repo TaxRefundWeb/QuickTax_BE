@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.quicktax.demo.service.calc.RefundCalculationService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -33,6 +34,7 @@ public class RefundSelectionService {
     private final RefundCaseRepository refundCaseRepository;
     private final TaxCompanyRepository taxCompanyRepository;
     private final CustomerRepository customerRepository;
+    private final RefundCalculationService refundCalculationService;
 
     // 1. 기간 선택 및 Case 생성 (이전과 동일)
     @Transactional
@@ -163,6 +165,8 @@ public class RefundSelectionService {
         // 4. 실제 저장 (TODO 구현 필요)
         // refundDetailRepository.saveAll(...) 등
         System.out.println("모든 데이터 검증 통과. Case ID: " + caseId + " 저장 시작...");
+
+        refundCalculationService.calculateRefund(caseId);
 
         // 💡 5. 결과 반환 (저장된 연도 리스트)
         return new RefundSaveResponse(savedYears);
