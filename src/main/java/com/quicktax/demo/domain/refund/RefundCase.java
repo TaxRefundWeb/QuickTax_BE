@@ -1,11 +1,14 @@
 package com.quicktax.demo.domain.refund;
 
 import com.quicktax.demo.domain.auth.TaxCompany;
+import com.quicktax.demo.domain.calc.CaseCalcResult; // 💡 Import 추가
 import com.quicktax.demo.domain.customer.Customer;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -20,19 +23,16 @@ public class RefundCase {
     @Column(name = "case_id")
     private Long caseId;
 
-    // 1단계: CPA(세무법인) 연결
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cpa_id")
     private TaxCompany taxCompany;
 
-    // 2단계: 고객 정보 (나중에 입력)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
-    // --- 1단계 입력 정보 ---
+    // --- (기존 필드들 유지) ---
 
-    // 💡 [수정] 다시 caseDate (LocalDate)로 복구 (getCaseDate() 에러 해결)
     @Column(name = "case_date")
     private LocalDate caseDate;
 
@@ -54,14 +54,10 @@ public class RefundCase {
     @Column(name = "status")
     private String status;
 
-    // --- 결과 정보 ---
-
-    @Column(name = "scenario_code")
-    private String scenarioCode;
-
-    @Column(name = "determined_tax_amount")
-    private Long determinedTaxAmount;
-
-    @Column(name = "refund_amount")
-    private Long refundAmount;
+    // --- 💡 [추가] 양방향 연결 설정 ---
+    // RefundCase 하나에 여러 개의 계산 결과(CaseCalcResult)가 달림
+    // mappedBy = "refundCase": CaseCalcResult 클래스의 'refundCase' 필드가 주인이라는 뜻
+    @OneToMany(mappedBy = "refundCase", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default // 빌더 패턴 사용 시 리스트 초기화 유지
+    private List<CaseCalcResult> results = new ArrayList<>();
 }
