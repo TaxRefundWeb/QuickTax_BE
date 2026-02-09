@@ -1,69 +1,125 @@
 package com.quicktax.demo.service.past;
 
-import com.quicktax.demo.domain.calc.CaseCalcResult; // 💡 Import 추가
-import com.quicktax.demo.domain.refund.RefundCase;
+import com.quicktax.demo.domain.calc.CaseCalcResult;
+import com.quicktax.demo.domain.calc.CaseCalcResultDocument;
+import com.quicktax.demo.domain.cases.TaxCase;
 import com.quicktax.demo.dto.PastDataDto;
 import com.quicktax.demo.dto.PastDataResponse;
-import com.quicktax.demo.repo.RefundCaseRepository;
+import com.quicktax.demo.repo.CaseCalcResultDocumentRepository;
+import com.quicktax.demo.repo.CaseCalcResultRepository;
+import com.quicktax.demo.repo.TaxCaseRepository;
 import com.quicktax.demo.service.customer.CustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class RefundService {
 
-    private final RefundCaseRepository refundCaseRepository;
     private final CustomerService customerService;
+    private final TaxCaseRepository taxCaseRepository;
+    private final CaseCalcResultRepository caseCalcResultRepository;
+    private final CaseCalcResultDocumentRepository caseCalcResultDocumentRepository;
 
     /**
-     * 고객 이전 환급 기록 열람
+     * GET /api/customers/{customerId}/past
+     * result.pastdata: (case_id, case_year) 단위 년도별 레코드 반환
      */
     @Transactional(readOnly = true)
     public PastDataResponse getCustomerPastData(Long cpaId, Long customerId) {
-        // 1. 권한 확인
+
+        // 1) 권한 체크 (403 / 404 포함)
         customerService.checkCustomerOwnership(cpaId, customerId);
 
-        // 2. 해당 고객의 모든 환급 건 조회
-        List<RefundCase> refundCases = refundCaseRepository.findByCustomer_CustomerId(customerId);
+        // 2) customer의 case 목록 (케이스ID 확보)
+        List<TaxCase> cases = taxCaseRepository.findByCustomer_CustomerIdAndCustomer_TaxCompany_CpaId(customerId, cpaId);
+        if (cases.isEmpty()) {
+            return new PastDataResponse(List.of());
+        }
 
-        // 3. DTO 변환 (CaseCalcResult 데이터를 집계해서 넣어야 함)
-        List<PastDataDto> pastDataList = refundCases.stream()
-                .map(refundCase -> {
+        // 정렬(선택): claim_date 최신 우선, 없으면 뒤로
+        cases.sort(Comparator.comparing(
+                (TaxCase tc) -> Optional.ofNullable(tc.getClaimDate()).orElse(LocalDate.MIN)
+        ).reversed().thenComparing(TaxCase::getCaseId));
 
-                    // 연결된 계산 결과 리스트 가져오기
-                    List<CaseCalcResult> results = refundCase.getResults();
+        List<Long> caseIds = cases.stream().map(TaxCase::getCaseId).toList();
 
-                    // (1) 시나리오 코드: 여러 개일 수 있으므로 콤마(,)로 연결 (예: "청년, 자녀")
-                    String scenarioCodes = results.stream()
-                            .map(r -> r.getId().getScenarioCode()) // ID 안에 있음
-                            .distinct()
-                            .collect(Collectors.joining(", "));
+        // 3) 문서 URL을 (case_id, case_year) -> url 맵으로 미리 적재
+        Map<Long, Map<Integer, String>> urlMapByCase = new HashMap<>();
+        List<CaseCalcResultDocument> docs =
+                caseCalcResultDocumentRepository.findAllByIdCaseIdInOrderByIdCaseIdAscIdCaseYearAsc(caseIds);
 
-                    // (2) 결정세액 합계 계산
-                    Long totalDeterminedTax = results.stream()
-                            .mapToLong(r -> r.getDeterminedTaxAmount() != null ? r.getDeterminedTaxAmount() : 0L)
-                            .sum();
+        for (CaseCalcResultDocument d : docs) {
+            Long caseId = d.getId().getCaseId();
+            Integer year = d.getId().getCaseYear();
+            urlMapByCase.computeIfAbsent(caseId, k -> new HashMap<>())
+                    .putIfAbsent(year, d.getUrl()); // 혹시 중복이면 첫 값 유지
+        }
 
-                    // (3) 환급액 합계 계산
-                    Long totalRefund = results.stream()
-                            .mapToLong(r -> r.getRefundAmount() != null ? r.getRefundAmount() : 0L)
-                            .sum();
+        // 4) 케이스별로 calc_result를 year로 그룹핑해서 년도별 레코드 생성
+        List<PastDataDto> out = new ArrayList<>();
 
-                    return PastDataDto.builder()
-                            .caseId(refundCase.getCaseId())
-                            .caseDate(refundCase.getCaseDate().toString())
-                            .scenarioCode(scenarioCodes.isEmpty() ? "계산 전" : scenarioCodes) // 결과가 없으면 '계산 전' 표시
-                            .determinedTaxAmount(totalDeterminedTax)
-                            .refundAmount(totalRefund)
-                            .build();
-                })
-                .collect(Collectors.toList());
+        for (TaxCase tc : cases) {
+            Long caseId = tc.getCaseId();
+            LocalDate claimDate = tc.getClaimDate();
 
-        return new PastDataResponse(pastDataList);
+            List<CaseCalcResult> results =
+                    caseCalcResultRepository.findAllByIdCaseIdOrderByIdCaseYearAscIdScenarioCodeAsc(caseId);
+
+            Map<Integer, List<CaseCalcResult>> byYear =
+                    results.stream().collect(Collectors.groupingBy(r -> r.getId().getCaseYear()));
+
+            // year 집합: 결과 year + 문서 year union
+            Set<Integer> years = new HashSet<>(byYear.keySet());
+            Map<Integer, String> urlByYear = urlMapByCase.getOrDefault(caseId, Map.of());
+            years.addAll(urlByYear.keySet());
+
+            // 연도 정렬: 최신 연도 우선
+            List<Integer> sortedYears = years.stream()
+                    .sorted(Comparator.reverseOrder())
+                    .toList();
+
+            for (Integer year : sortedYears) {
+                List<CaseCalcResult> yearRows = byYear.getOrDefault(year, List.of());
+
+                String scenarioCode = yearRows.stream()
+                        .map(r -> r.getId().getScenarioCode())
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.joining(", "));
+                if (scenarioCode.isBlank()) scenarioCode = "계산 전";
+
+                long determined = yearRows.stream()
+                        .map(CaseCalcResult::getDeterminedTaxAmount)
+                        .filter(Objects::nonNull)
+                        .mapToLong(Long::longValue)
+                        .sum();
+
+                long refund = yearRows.stream()
+                        .map(CaseCalcResult::getRefundAmount)
+                        .filter(Objects::nonNull)
+                        .mapToLong(Long::longValue)
+                        .sum();
+
+                String url = urlByYear.get(year); // 없으면 null
+
+                out.add(PastDataDto.builder()
+                        .caseId(caseId)
+                        .caseYear(year)
+                        .claimDate(claimDate)
+                        .scenarioCode(scenarioCode)
+                        .determinedTaxAmount(determined)
+                        .refundAmount(refund)
+                        .url(url)
+                        .build());
+            }
+        }
+
+        return new PastDataResponse(out);
     }
 }

@@ -48,11 +48,9 @@ public class CustomerController {
      * GET /api/customers/{customerId}/past
      */
     @GetMapping("/customers/{customerId}/past")
-    @Operation(summary = "고객 이전 기록 열람", description = "특정 고객의 과거 환급 또는 세무 기록 데이터를 조회합니다.")
     public ApiResponse<PastDataResponse> getPastRecords(
             @AuthenticationPrincipal Long cpaId,
-            @PathVariable(name = "customerId") Long customerId) {
-
+            @PathVariable Long customerId) {
         return ApiResponse.ok(refundService.getCustomerPastData(cpaId, customerId));
     }
 

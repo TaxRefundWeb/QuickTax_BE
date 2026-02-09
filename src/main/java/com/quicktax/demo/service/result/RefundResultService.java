@@ -3,80 +3,84 @@ package com.quicktax.demo.service.result;
 import com.quicktax.demo.common.ApiException;
 import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.domain.calc.CaseCalcResult;
-import com.quicktax.demo.domain.customer.Customer;
-import com.quicktax.demo.domain.refund.RefundCase; // 💡 RefundCase 사용
-import com.quicktax.demo.dto.refundResult.RefundResultResponse;
-import com.quicktax.demo.dto.refundResult.RefundResultResponse.ScenarioResult;
-import com.quicktax.demo.dto.refundResult.RefundResultResponse.YearlyResult;
+import com.quicktax.demo.domain.cases.TaxCase;
+import com.quicktax.demo.dto.RefundResultsResponse;
 import com.quicktax.demo.repo.CaseCalcResultRepository;
-import com.quicktax.demo.repo.RefundCaseRepository; // 💡 RefundCaseRepository 사용
+import com.quicktax.demo.repo.TaxCaseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RefundResultService {
 
-    private final RefundCaseRepository refundCaseRepository; // 💡 수정됨
+    private final TaxCaseRepository taxCaseRepository;
     private final CaseCalcResultRepository caseCalcResultRepository;
 
-    @Transactional(readOnly = true)
-    public RefundResultResponse getCalculationResult(Long cpaId, Long caseId) {
+    public RefundResultsResponse getRefundResults(Long cpaId, Long caseId) {
 
-        // 1. Case 조회 (RefundCaseRepository 사용)
-        RefundCase refundCase = refundCaseRepository.findById(caseId)
-                .orElseThrow(() -> new ApiException(ErrorCode.BADREQ400, "존재하지 않는 Case ID입니다."));
-
-        // 2. 권한 검증 (403)
-        Customer customer = refundCase.getCustomer();
-        if (customer == null || !customer.getTaxCompany().getCpaId().equals(cpaId)) {
-            throw new ApiException(ErrorCode.AUTH403, "해당 결과에 접근할 권한이 없습니다.");
+        // 401 (명세)
+        if (cpaId == null) {
+            throw new ApiException(ErrorCode.AUTH401, "로그인이 필요합니다.");
         }
 
-        // 3. DB 조회 (Flat Data)
-        List<CaseCalcResult> flatResults = caseCalcResultRepository.findAllByCaseId(caseId);
+        // case 존재 확인
+        TaxCase taxCase = taxCaseRepository.findById(caseId)
+                .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "존재하지 않는 caseId 입니다."));
 
-        // 4. 데이터 가공: 연도별 그룹핑
-        Map<Integer, List<CaseCalcResult>> groupedByYear = flatResults.stream()
-                .collect(Collectors.groupingBy(result -> result.getId().getCaseYear()));
+        // 403 (명세) - 권한 체크
+        Long ownerCpaId = taxCase.getCustomer().getTaxCompany().getCpaId();
+        if (!cpaId.equals(ownerCpaId)) {
+            throw new ApiException(ErrorCode.AUTH403, "권한이 존재 하지 않습니다.");
+        }
 
-        List<YearlyResult> yearlyResults = groupedByYear.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey()) // 연도 오름차순
-                .map(entry -> {
-                    Integer year = entry.getKey();
-                    List<CaseCalcResult> yearResults = entry.getValue();
+        // case_id로 모든 year/scenario 결과 조회
+        List<CaseCalcResult> rows =
+                caseCalcResultRepository.findAllByIdCaseIdOrderByIdCaseYearAscIdScenarioCodeAsc(caseId);
 
-                    List<ScenarioResult> scenarios = yearResults.stream()
-                            .map(this::convertToScenarioDTO)
-                            .collect(Collectors.toList());
+        // 404 (명세) - 계산 방식 없음
+        if (rows.isEmpty()) {
+            throw new ApiException(ErrorCode.COMMON404, "계산 방식이 존재 하지 않습니다.");
+        }
 
-                    return YearlyResult.builder()
-                            .caseYear(year)
-                            .scenarios(scenarios)
-                            .build();
-                })
-                .collect(Collectors.toList());
+        // year -> scenarios (조회 정렬 유지하려고 LinkedHashMap)
+        Map<Integer, List<RefundResultsResponse.ScenarioResult>> byYear = new LinkedHashMap<>();
 
-        return RefundResultResponse.builder()
-                .refundResults(yearlyResults)
-                .build();
-    }
+        for (CaseCalcResult r : rows) {
+            Integer year = r.getId().getCaseYear();
 
-    private ScenarioResult convertToScenarioDTO(CaseCalcResult entity) {
-        return ScenarioResult.builder()
-                .scenarioCode(entity.getId().getScenarioCode())
-                .taxDifferenceAmount(entity.getTaxDifferenceAmount())
-                .determinedTaxAmount(entity.getDeterminedTaxAmount())
-                .taxBaseAmount(entity.getTaxBaseAmount())
-                .calculatedTax(entity.getCalculatedTax()) // 💡 추가된 필드 매핑
-                .earnedIncomeAmount(entity.getEarnedIncomeAmount())
-                .refundAmount(entity.getRefundAmount())
-                .scenarioText(entity.getScenarioText())
-                .build();
+            byYear.computeIfAbsent(year, k -> new ArrayList<>()).add(
+                    new RefundResultsResponse.ScenarioResult(
+                            r.getId().getScenarioCode(),
+                            r.getTaxDifferenceAmount(),
+                            r.getDeterminedTaxAmount(),
+                            r.getTaxBaseAmount(),
+                            // ⚠️ 현재 스키마 컬럼명이 calculated_tax_rate 로 되어있음.
+                            // 명세의 calculated_tax(산출세액) 자리에 그대로 내려줌.
+                            r.getCalculatedTaxRate(),
+                            r.getEarnedIncomeAmount(),
+                            r.getRefundAmount(),
+                            r.getScenarioText()
+                    )
+            );
+        }
+
+        // yearResult 생성
+        List<RefundResultsResponse.YearResult> yearResults = new ArrayList<>();
+        for (Map.Entry<Integer, List<RefundResultsResponse.ScenarioResult>> e : byYear.entrySet()) {
+
+            // 명세: year당 1~3개 (DB가 보장해야 정상인데, 방어로직 넣음)
+            if (e.getValue().isEmpty() || e.getValue().size() > 3) {
+                throw new ApiException(ErrorCode.COMMON500, "계산 결과 데이터가 비정상입니다.");
+            }
+
+            yearResults.add(new RefundResultsResponse.YearResult(e.getKey(), e.getValue()));
+        }
+
+        return new RefundResultsResponse(yearResults);
     }
 }
