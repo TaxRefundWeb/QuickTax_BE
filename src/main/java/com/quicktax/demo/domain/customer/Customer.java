@@ -68,6 +68,7 @@ public class Customer {
     @Column(name = "nationality_name", nullable = false, length = 50)
     private String nationalityName;
 
+    // 💡 [복구] 다시 Integer 타입으로 변경 (DB의 INT 컬럼과 매칭)
     @NotNull
     @Min(0)
     @Max(100)
@@ -83,7 +84,7 @@ public class Customer {
             String bankNumber,
             String nationalityCode,
             String nationalityName,
-            Integer finalFeePercent
+            Integer finalFeePercent // 💡 매개변수도 Integer로 복구
     ) {
         this.taxCompany = taxCompany;
         this.name = name;
@@ -96,10 +97,7 @@ public class Customer {
         this.finalFeePercent = finalFeePercent;
     }
 
-    // 💡 에러를 해결해 줄 구원자 메서드 등장!
-    /**
-     * 고객 기본 정보 업데이트 (조회 후 수정 시 사용)
-     */
+    // 💡 메서드 파라미터도 Integer로 복구
     public void updateBasicInfo(String address, String bank, String bankNumber, Integer finalFeePercent) {
         this.address = address;
         this.bank = bank;

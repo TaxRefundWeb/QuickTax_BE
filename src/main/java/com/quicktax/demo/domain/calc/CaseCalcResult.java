@@ -1,14 +1,14 @@
 package com.quicktax.demo.domain.calc;
 
-import com.quicktax.demo.domain.cases.TaxCase;
+import com.quicktax.demo.domain.refund.RefundCase;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(name = "case_calc_result")
 @Getter
+@Builder // 💡 추가: 빌더 패턴 사용
+@AllArgsConstructor // 💡 추가: 빌더 사용 시 필요
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CaseCalcResult {
 
@@ -18,13 +18,16 @@ public class CaseCalcResult {
     @MapsId("caseId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "case_id", nullable = false)
-    private TaxCase taxCase;
+    private RefundCase refundCase;
 
     @Column(name = "tax_base_amount")
     private Long taxBaseAmount;
 
     @Column(name = "calculated_tax_rate")
     private Long calculatedTaxRate;
+
+    @Column(name = "calculated_tax")
+    private Long calculatedTax;
 
     @Column(name = "earned_income_amount")
     private Long earnedIncomeAmount;
@@ -53,12 +56,13 @@ public class CaseCalcResult {
     @Column(name = "scenario_text", length = 200)
     private String scenarioText;
 
+    // 생성자 (수동 생성 시 사용)
     public CaseCalcResult(
-            TaxCase taxCase,
+            RefundCase refundCase,
             Integer caseYear,
             String scenarioCode
     ) {
-        this.taxCase = taxCase;
-        this.id = new CaseCalcResultId(taxCase.getCaseId(), caseYear, scenarioCode);
+        this.refundCase = refundCase;
+        this.id = new CaseCalcResultId(refundCase.getCaseId(), caseYear, scenarioCode);
     }
 }

@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -34,13 +33,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ObjectMapper objectMapper;
 
-    /**
-     * ✅ STG: Swagger UI / api-docs 접근 허용 (데모용)
-     * - 나머지 API는 기존대로 인증 필요
-     */
     @Bean
-    @Profile("stg")
-    public SecurityFilterChain stgFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
@@ -69,40 +63,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * ✅ PROD: Swagger는 "아예 존재하지 않는 것처럼" 404 처리
-     * - SwaggerBlockFilter(@Profile("prod"))가 요청을 404로 컷합니다.
-     * - 나머지 API는 기존대로 인증 필요
-     */
-    @Bean
-    @Profile("prod")
-    public SecurityFilterChain prodFilterChain(HttpSecurity http, SwaggerBlockFilter swaggerBlockFilter) throws Exception {
-        http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(customAuthenticationEntryPoint())
-                        .accessDeniedHandler(customAccessDeniedHandler())
-                )
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                // Swagger 요청은 JWT 필터까지도 안 가게 먼저 404로 컷
-                .addFilterBefore(swaggerBlockFilter, JwtAuthenticationFilter.class);
-
-        return http.build();
-    }
-
-    // 💡 403 Forbidden: 로그인은 했지만 권한이 없는 경우
     @Bean
     public AccessDeniedHandler customAccessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
@@ -110,7 +70,6 @@ public class SecurityConfig {
         };
     }
 
-    // 💡 401 Unauthorized: 로그인하지 않았거나 토큰이 만료된 경우
     @Bean
     public AuthenticationEntryPoint customAuthenticationEntryPoint() {
         return (request, response, authException) -> {
@@ -130,11 +89,11 @@ public class SecurityConfig {
         response.getWriter().write(result);
     }
 
-    // CORS 설정 (프론트: http://localhost:5173)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
+        // 💡 배포 및 로컬 도메인 허용 패턴 적용
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
                 "https://stg.quicktax.site",
@@ -144,9 +103,10 @@ public class SecurityConfig {
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-        config.setExposedHeaders(List.of("Set-Cookie"));
+        config.setExposedHeaders(List.of("Set-Cookie", "Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

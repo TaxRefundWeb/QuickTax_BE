@@ -16,27 +16,19 @@ import org.springframework.stereotype.Service;
 public class AuthService {
     private final TaxCompanyRepository taxCompanyRepository;
     private final JwtUtil jwtUtil;
-    private final PasswordEncoder passwordEncoder; // SecurityConfig의 BCrypt가 주입됨
+    private final PasswordEncoder passwordEncoder;
 
     public String login(Long cpaId, String password) {
-        // AuthService.java 내 login 메서드 상단
-        String encoded = passwordEncoder.encode("1234");
-        System.out.println("서버가 만든 진짜 암호문: " + encoded);
-
-        System.out.println("현재 사용 중인 인코더: " + passwordEncoder.getClass().getSimpleName());
-
+        // 1. 사용자 조회
         TaxCompany company = taxCompanyRepository.findById(cpaId)
-                .orElseThrow(() -> new ApiException(ErrorCode.BADREQ400, "ID 없음"));
+                .orElseThrow(() -> new ApiException(ErrorCode.BADREQ400, "존재하지 않는 사용자입니다."));
 
-        // 콘솔에 찍어서 눈으로 확인
-        System.out.println("--- 로그인 디버깅 ---");
-        System.out.println("입력된 비번: [" + password + "]");
-        System.out.println("DB 저장된 값: [" + company.getPassword() + "]");
-        System.out.println("비교 결과: " + passwordEncoder.matches(password, company.getPassword()));
-
-        if (!passwordEncoder.matches(password.trim(), company.getPassword())) {
-            throw new ApiException(ErrorCode.BADREQ400, "비밀번호 불일치");
+        // 2. 비밀번호 검증 (디버깅용 로그 제거하고 깔끔하게)
+        if (!passwordEncoder.matches(password, company.getPassword())) {
+            throw new ApiException(ErrorCode.BADREQ400, "비밀번호가 일치하지 않습니다.");
         }
-        return jwtUtil.generateToken(cpaId);
+
+        // 3. 💡 수정됨: 이메일 없이 ID만으로 토큰 생성 호출
+        return jwtUtil.createToken(company.getCpaId());
     }
 }
