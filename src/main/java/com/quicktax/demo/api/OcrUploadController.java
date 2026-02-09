@@ -6,6 +6,7 @@ import com.quicktax.demo.dto.OcrUploadCompleteResponse;
 import com.quicktax.demo.service.ocr.OcrUploadService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,12 +17,18 @@ public class OcrUploadController {
     private final OcrUploadService ocrUploadService;
 
     @PostMapping("/api/cases/{caseId}/ocr/presign")
-    public ApiResponse<OcrPresignResponse> presign(@PathVariable Long caseId) {
-        return ApiResponse.ok(ocrUploadService.presign(caseId));
+    public ApiResponse<OcrPresignResponse> presign(
+            @AuthenticationPrincipal Long cpaId,
+            @PathVariable Long caseId
+    ) {
+        return ApiResponse.ok(ocrUploadService.presign(cpaId, caseId));
     }
 
     @PostMapping("/api/cases/{caseId}/ocr/complete")
-    public ApiResponse<OcrUploadCompleteResponse> complete(@PathVariable Long caseId) {
-        return ApiResponse.ok(ocrUploadService.complete(caseId));
+    public ApiResponse<OcrUploadCompleteResponse> complete(
+            @AuthenticationPrincipal Long cpaId,
+            @PathVariable Long caseId
+    ) {
+        return ApiResponse.ok(ocrUploadService.complete(cpaId, caseId));
     }
 }

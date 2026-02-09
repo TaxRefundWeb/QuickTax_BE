@@ -1,8 +1,9 @@
 package com.quicktax.demo.service.ocr;
 
+import com.quicktax.demo.common.ApiException;
+import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.domain.cases.TaxCase;
 import com.quicktax.demo.domain.ocr.OcrJob;
-import com.quicktax.demo.domain.ocr.OcrJobStatus;
 import com.quicktax.demo.dto.OcrPresignResponse;
 import com.quicktax.demo.dto.OcrUploadCompleteResponse;
 import com.quicktax.demo.repo.OcrJobRepository;
@@ -42,33 +43,71 @@ public class OcrUploadService {
         this.expiresIn = expiresIn;
     }
 
-    @Transactional
-    public OcrPresignResponse presign(Long caseId) {
+    private void requireLogin(Long cpaId) {
+        if (cpaId == null) throw new ApiException(ErrorCode.AUTH401, "로그인이 필요합니다.");
+    }
+
+    private TaxCase requireOwnedCase(Long cpaId, Long caseId) {
         TaxCase taxCase = taxCaseRepository.findById(caseId)
-                .orElseThrow(() -> new IllegalArgumentException("cases 없음: " + caseId));
+                .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "존재하지 않는 caseId 입니다."));
 
-        String key = keyService.rawPdfKey(caseId);
-        String url = presignService.presignPutPdf(key);
+        Long ownerCpaId = taxCase.getCustomer().getTaxCompany().getCpaId();
+        if (!cpaId.equals(ownerCpaId)) {
+            throw new ApiException(ErrorCode.AUTH403, "권한이 없습니다.");
+        }
+        return taxCase;
+    }
 
-        OcrJob job = ocrJobRepository.findById(caseId).orElse(new OcrJob(taxCase));
-        job.resetWaitingUpload(key); // WAITING_UPLOAD + key 세팅
+    @Transactional
+    public OcrPresignResponse presign(Long cpaId, Long caseId) {
+        requireLogin(cpaId);
+        TaxCase taxCase = requireOwnedCase(cpaId, caseId);
+
+        OcrJob job = ocrJobRepository.findById(caseId)
+                .orElseGet(() -> new OcrJob(taxCase));
+
+        String key = (job.getOriginalS3Key() != null && !job.getOriginalS3Key().isBlank())
+                ? job.getOriginalS3Key()
+                : keyService.rawPdfKey(caseId);
+
+        final String url;
+        try {
+            url = presignService.presignPutPdf(key);
+        } catch (Exception e) {
+            throw new ApiException(
+                    ErrorCode.COMMON500,
+                    "S3 presign 실패: " + e.getClass().getSimpleName() + " - " + (e.getMessage() == null ? "" : e.getMessage())
+            );
+        }
+
+        job.resetWaitingUpload(key);
         ocrJobRepository.save(job);
 
         return new OcrPresignResponse(url, key, expiresIn);
     }
 
     @Transactional
-    public OcrUploadCompleteResponse complete(Long caseId) {
+    public OcrUploadCompleteResponse complete(Long cpaId, Long caseId) {
+        requireLogin(cpaId);
+        requireOwnedCase(cpaId, caseId);
+
         OcrJob job = ocrJobRepository.findById(caseId)
-                .orElseThrow(() -> new IllegalArgumentException("ocr_job 없음: presign 먼저"));
+                .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "ocr_job 없음: presign 먼저"));
 
         String key = job.getOriginalS3Key();
-        HeadObjectResponse head = s3Client.headObject(HeadObjectRequest.builder()
-                .bucket(presignService.bucket())
-                .key(key)
-                .build());
 
-        job.markProcessing(); // PROCESSING
+        final HeadObjectResponse head;
+        try {
+            head = s3Client.headObject(HeadObjectRequest.builder()
+                    .bucket(presignService.bucket())
+                    .key(key)
+                    .build());
+        } catch (Exception e) {
+            throw new ApiException(ErrorCode.COMMON500,
+                    "S3 headObject 실패: " + e.getClass().getSimpleName() + " - " + (e.getMessage() == null ? "" : e.getMessage()));
+        }
+
+        job.markProcessing();
         return new OcrUploadCompleteResponse(
                 key,
                 head.contentLength(),
