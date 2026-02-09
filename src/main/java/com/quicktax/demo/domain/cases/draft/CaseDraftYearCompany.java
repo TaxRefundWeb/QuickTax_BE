@@ -26,6 +26,10 @@ public class CaseDraftYearCompany {
     })
     private CaseDraftYear caseDraftYear;
 
+    // ✅ 추가
+    @Column(name = "small_business_yn", nullable = false)
+    private boolean smallBusinessYn = false;
+
     @NotNull
     @Column(name = "case_work_start", nullable = false)
     private LocalDate caseWorkStart;
@@ -42,18 +46,20 @@ public class CaseDraftYearCompany {
         return caseWorkEnd == null || !caseWorkStart.isAfter(caseWorkEnd);
     }
 
+    // ✅ 생성자에 smallBusinessYn 파라미터 추가
     public CaseDraftYearCompany(
             CaseDraftYear caseDraftYear,
             Integer caseCompany,
             LocalDate caseWorkStart,
             LocalDate caseWorkEnd,
-            String businessNumber
+            String businessNumber,
+            boolean smallBusinessYn
     ) {
         this.caseDraftYear = caseDraftYear;
         this.id = new CaseDraftYearCompanyId(caseDraftYear.getId(), caseCompany);
+        this.smallBusinessYn = smallBusinessYn; // ✅ 추가
         this.caseWorkStart = caseWorkStart;
         this.caseWorkEnd = caseWorkEnd;
         this.businessNumber = businessNumber;
     }
 }
-

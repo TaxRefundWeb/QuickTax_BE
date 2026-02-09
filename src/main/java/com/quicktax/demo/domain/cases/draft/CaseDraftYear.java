@@ -19,8 +19,9 @@ public class CaseDraftYear {
     @JoinColumn(name = "case_id", nullable = false)
     private TaxCase taxCase;
 
-    @Column(name = "small_business_yn", nullable = false)
-    private boolean smallBusinessYn = false;
+    // ❌ 삭제: year에 small_business_yn 들고 있으면 안 됨
+    // @Column(name = "small_business_yn", nullable = false)
+    // private boolean smallBusinessYn = false;
 
     @Column(name = "spouse_yn", nullable = false)
     private boolean spouseYn = false;
@@ -39,28 +40,12 @@ public class CaseDraftYear {
     public CaseDraftYear(
             TaxCase taxCase,
             Integer caseYear,
-            boolean smallBusinessYn,
-            boolean spouseYn,
-            boolean childYn
-    ) {
-        this.taxCase = taxCase;
-        this.id = new CaseDraftYearId(taxCase.getCaseId(), caseYear);
-        this.smallBusinessYn = smallBusinessYn;
-        this.spouseYn = spouseYn;
-        this.childYn = childYn;
-    }
-
-    public CaseDraftYear(
-            TaxCase taxCase,
-            Integer caseYear,
-            boolean smallBusinessYn,
             boolean spouseYn,
             boolean childYn,
             boolean reductionYn
     ) {
         this.taxCase = taxCase;
         this.id = new CaseDraftYearId(taxCase.getCaseId(), caseYear);
-        this.smallBusinessYn = smallBusinessYn;
         this.spouseYn = spouseYn;
         this.childYn = childYn;
         this.reductionYn = reductionYn;
