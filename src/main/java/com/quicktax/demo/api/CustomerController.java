@@ -48,6 +48,7 @@ public class CustomerController {
      * GET /api/customers/{customerId}/past
      */
     @GetMapping("/customers/{customerId}/past")
+    @Operation(summary = "고객의 과거기록 조회", description = "해당 URL에 담긴 고객의 과거기록을 조회합니다.")
     public ApiResponse<PastDataResponse> getPastRecords(
             @AuthenticationPrincipal Long cpaId,
             @PathVariable Long customerId) {
