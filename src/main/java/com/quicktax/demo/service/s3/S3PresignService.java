@@ -22,7 +22,7 @@ public class S3PresignService {
             @Value("${quicktax.s3.presign.expire-seconds:900}") int expireSeconds
     ) {
         this.presigner = presigner;
-        this.bucket = bucket;
+        this.bucket = bucket.trim();
         this.expireSeconds = expireSeconds;
     }
 
