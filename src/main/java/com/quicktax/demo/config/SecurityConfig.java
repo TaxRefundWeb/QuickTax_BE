@@ -96,13 +96,14 @@ public class SecurityConfig {
         // 💡 배포 및 로컬 도메인 허용 패턴 적용
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
-                "https://api.quicktax.site",
+                "https://stg.quicktax.site",
                 "https://quicktax.site",
-                "https://*.quicktax.site"
+                "https://www.quicktax.site",
+                "https://api.quicktax.site"
         ));
 
-        // 💡 PATCH 메서드 명시적 추가
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         config.setExposedHeaders(List.of("Set-Cookie", "Authorization"));
