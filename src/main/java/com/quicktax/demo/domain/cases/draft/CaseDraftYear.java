@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-
 @Entity
 @Table(name = "case_draft_year")
 @Getter
@@ -29,6 +28,9 @@ public class CaseDraftYear {
     @Column(name = "child_yn", nullable = false)
     private boolean childYn = false;
 
+    @Column(name = "reduction_yn", nullable = false)
+    private boolean reductionYn = false;
+
     public CaseDraftYear(TaxCase taxCase, Integer caseYear) {
         this.taxCase = taxCase;
         this.id = new CaseDraftYearId(taxCase.getCaseId(), caseYear);
@@ -46,5 +48,21 @@ public class CaseDraftYear {
         this.smallBusinessYn = smallBusinessYn;
         this.spouseYn = spouseYn;
         this.childYn = childYn;
+    }
+
+    public CaseDraftYear(
+            TaxCase taxCase,
+            Integer caseYear,
+            boolean smallBusinessYn,
+            boolean spouseYn,
+            boolean childYn,
+            boolean reductionYn
+    ) {
+        this.taxCase = taxCase;
+        this.id = new CaseDraftYearId(taxCase.getCaseId(), caseYear);
+        this.smallBusinessYn = smallBusinessYn;
+        this.spouseYn = spouseYn;
+        this.childYn = childYn;
+        this.reductionYn = reductionYn;
     }
 }

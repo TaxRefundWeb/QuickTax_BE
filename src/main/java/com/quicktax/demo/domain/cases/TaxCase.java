@@ -3,7 +3,6 @@ package com.quicktax.demo.domain.cases;
 import com.quicktax.demo.domain.customer.Customer;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -35,22 +34,15 @@ public class TaxCase {
     @Column(name = "claim_to")
     private Integer claimTo;
 
-    @NotNull
-    @Column(name = "reduction_yn", nullable = false)
-    private Boolean reductionYn = false;
-
     @Column(name = "reduction_start")
     private LocalDate reductionStart;
 
     @Column(name = "reduction_end")
     private LocalDate reductionEnd;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private CaseStatus status = CaseStatus.START;
+    @Column(name = "claim_date")
+    private LocalDate claimDate;
 
-    // IS NULL or  claim_from <= claim_to
     @AssertTrue(message = "claim_from must be <= claim_to")
     public boolean isClaimRangeValid() {
         return claimFrom == null || claimTo == null || claimFrom <= claimTo;
@@ -58,5 +50,35 @@ public class TaxCase {
 
     public TaxCase(Customer customer) {
         this.customer = customer;
+    }
+
+    public TaxCase(Customer customer,
+                   Integer claimFrom,
+                   Integer claimTo,
+                   LocalDate reductionStart,
+                   LocalDate reductionEnd,
+                   LocalDate claimDate) {
+        this.customer = customer;
+        this.claimFrom = claimFrom;
+        this.claimTo = claimTo;
+        this.reductionStart = reductionStart;
+        this.reductionEnd = reductionEnd;
+        this.claimDate = claimDate;
+    }
+
+    public void applySelection(Integer claimFrom,
+                               Integer claimTo,
+                               LocalDate reductionStart,
+                               LocalDate reductionEnd,
+                               LocalDate claimDate) {
+        this.claimFrom = claimFrom;
+        this.claimTo = claimTo;
+        this.reductionStart = reductionStart;
+        this.reductionEnd = reductionEnd;
+        this.claimDate = claimDate;
+    }
+
+    public void applyClaimDate(LocalDate claimDate) {
+        this.claimDate = claimDate;
     }
 }

@@ -5,21 +5,23 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import java.util.List;
 
-/**
- * 1. 개별 과거 기록 정보
- */
+import java.time.LocalDate;
+
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class PastDataDto {
+
     @JsonProperty("case_id")
     private Long caseId;
 
-    @JsonProperty("case_date")
-    private String caseDate; // "2026-01-28" 형식
+    @JsonProperty("case_year")
+    private Integer caseYear;
+
+    @JsonProperty("claim_date")
+    private LocalDate claimDate; // "YYYY-MM-DD"로 JSON 나감
 
     @JsonProperty("scenario_code")
     private String scenarioCode;
@@ -29,5 +31,7 @@ public class PastDataDto {
 
     @JsonProperty("refund_amount")
     private Long refundAmount;
-}
 
+    @JsonProperty("url")
+    private String url;
+}
