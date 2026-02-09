@@ -4,17 +4,20 @@ import com.quicktax.demo.common.ApiException;
 import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.domain.cases.TaxCase;
 import com.quicktax.demo.domain.cases.draft.*;
+import com.quicktax.demo.domain.ocr.OcrJob;
 import com.quicktax.demo.dto.refund.*;
+import com.quicktax.demo.repo.OcrJobRepository;
 import com.quicktax.demo.repo.TaxCaseRepository;
 import com.quicktax.demo.repo.draft.*;
 import com.quicktax.demo.service.customer.CustomerService;
+import com.quicktax.demo.service.s3.OcrS3KeyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,46 +32,70 @@ public class RefundSelectionServiceImpl implements RefundSelectionService {
     private final CaseDraftYearSpouseRepository spouseRepository;
     private final CaseDraftYearChildRepository childRepository;
 
+    private final OcrJobRepository ocrJobRepository;
+    private final OcrS3KeyService keyService;
+
     /**
-     * 1) 경정청구 기간 선택 → cases 생성
+     * 1) 경정청구 기간 선택 → cases 생성 (+ ocr_job도 같이 생성)
      */
     @Override
     public Long createCase(Long cpaId, Long customerId, RefundSelectionRequest request) {
+        try {
+            // 권한 체크 (403)
+            var customer = customerService.checkCustomerOwnership(cpaId, customerId);
 
-        // 권한 체크 (403)
-        var customer = customerService.checkCustomerOwnership(cpaId, customerId);
+            // 기본 검증
+            if (request.claim_date() == null) throw new ApiException(ErrorCode.BADREQ400, "claim_date는 필수입니다.");
+            if (request.claim_from() > request.claim_to()) throw new ApiException(ErrorCode.BADREQ400, "claim_from <= claim_to 여야 합니다.");
 
-        // 기본 검증
-        if (request.claim_date() == null) throw new ApiException(ErrorCode.BADREQ400, "claim_date는 필수입니다.");
-        if (request.claim_from() > request.claim_to()) throw new ApiException(ErrorCode.BADREQ400, "claim_from <= claim_to 여야 합니다.");
+            LocalDate reductionStart = request.reduction_start();
+            LocalDate reductionEnd = request.reduction_end();
 
-        LocalDate reductionStart = request.reduction_start();
-        LocalDate reductionEnd = request.reduction_end();
+            if (!request.reduction_yn()) {
+                reductionStart = null;
+                reductionEnd = null;
+            } else {
+                if (reductionStart == null || reductionEnd == null)
+                    throw new ApiException(ErrorCode.BADREQ400, "reduction_yn=true면 reduction_start/end는 필수입니다.");
+                if (reductionStart.isAfter(reductionEnd))
+                    throw new ApiException(ErrorCode.BADREQ400, "reduction_start <= reduction_end 여야 합니다.");
+            }
 
-        if (!request.reduction_yn()) {
-            // 감면 안하면 날짜는 무조건 null로 정리
-            reductionStart = null;
-            reductionEnd = null;
-        } else {
-            // 감면 한다면 날짜 필수 + 범위 체크
-            if (reductionStart == null || reductionEnd == null)
-                throw new ApiException(ErrorCode.BADREQ400, "reduction_yn=true면 reduction_start/end는 필수입니다.");
-            if (reductionStart.isAfter(reductionEnd))
-                throw new ApiException(ErrorCode.BADREQ400, "reduction_start <= reduction_end 여야 합니다.");
+            // 1) cases 저장
+            TaxCase taxCase = new TaxCase(customer);
+            taxCase.applySelection(
+                    request.claim_from(),
+                    request.claim_to(),
+                    reductionStart,
+                    reductionEnd,
+                    request.claim_date()
+            );
+
+            taxCaseRepository.saveAndFlush(taxCase); // ✅ IDENTITY면 이게 핵심
+            Long caseId = taxCase.getCaseId();
+            if (caseId == null) throw new ApiException(ErrorCode.COMMON500, "case_id 생성 실패");
+
+            // 2) ocr_job 생성 (신규 케이스니까 그냥 생성이 정답)
+            String key = keyService.rawPdfKey(caseId);
+
+            OcrJob job = new OcrJob(taxCase);
+            job.resetWaitingUpload(key);
+
+            ocrJobRepository.saveAndFlush(job);
+
+            return caseId;
+
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            // ✅ swagger 응답에 “진짜 원인”이 박히게 함
+            throw new ApiException(
+                    ErrorCode.COMMON500,
+                    "refund-selection 실패: " + e.getClass().getSimpleName() + " - " + (e.getMessage() == null ? "" : e.getMessage())
+            );
         }
-
-        TaxCase taxCase = new TaxCase(customer);
-        taxCase.applySelection(
-                request.claim_from(),
-                request.claim_to(),
-                reductionStart,
-                reductionEnd,
-                request.claim_date()
-        );
-
-        taxCaseRepository.save(taxCase);
-        return taxCase.getCaseId();
     }
+
 
     /**
      * 2) 경정청구 신청 정보 입력 → case_draft_* 저장
@@ -101,16 +128,13 @@ public class RefundSelectionServiceImpl implements RefundSelectionService {
 
         for (RefundYearCase yearCase : request.cases()) {
 
-            // 회사 최소 1개 + 최대 3개(엔티티 ID 제약이 Max(3))
+            // 회사 최소 1개 + 최대 3개
             if (yearCase.companies() == null || yearCase.companies().isEmpty()) {
                 throw new ApiException(ErrorCode.BADREQ400, "companies는 1개 이상 필요합니다. case_year=" + yearCase.case_year());
             }
             if (yearCase.companies().size() > 3) {
                 throw new ApiException(ErrorCode.BADREQ400, "companies는 최대 3개까지 가능합니다. case_year=" + yearCase.case_year());
             }
-
-            // year 작은사업자 여부: 회사들 중 하나라도 true면 true로 저장 (엔티티가 year에만 있음)
-            boolean smallBusinessYn = yearCase.companies().stream().anyMatch(RefundCompany::small_business_yn);
 
             // draft year 저장 (이미 있으면 400)
             CaseDraftYearId yearId = new CaseDraftYearId(caseId, yearCase.case_year());
@@ -121,7 +145,6 @@ public class RefundSelectionServiceImpl implements RefundSelectionService {
             CaseDraftYear draftYear = new CaseDraftYear(
                     taxCase,
                     yearCase.case_year(),
-                    smallBusinessYn,
                     yearCase.spouse_yn(),
                     yearCase.child_yn(),
                     yearCase.reduction_yn()
@@ -139,7 +162,8 @@ public class RefundSelectionServiceImpl implements RefundSelectionService {
                         companyIdx++,
                         company.case_work_start(),
                         company.case_work_end(),
-                        company.business_number()
+                        company.business_number(),
+                        company.small_business_yn()
                 ));
             }
 
