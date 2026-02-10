@@ -1,4 +1,4 @@
-package com.quicktax.demo.dto;
+package com.quicktax.demo.dto.ocr;
 
 public record OcrPresignResponse(
         String uploadUrl,

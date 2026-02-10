@@ -1,10 +1,9 @@
-package com.quicktax.demo.dto;
+package com.quicktax.demo.dto.customer;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import java.util.List;
 
 /**
  * 1. 개별 고객 정보를 담는 DTO

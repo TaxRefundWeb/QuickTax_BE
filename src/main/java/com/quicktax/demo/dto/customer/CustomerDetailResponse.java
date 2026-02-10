@@ -1,17 +1,16 @@
-package com.quicktax.demo.dto;
+package com.quicktax.demo.dto.customer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CustomerUpdateRequest {
+public class CustomerDetailResponse {
     private String name;
     private String rrn;
-    private String phone; // 💡 이 필드가 있어야 request.getPhone()이 작동합니다.
+    private String phone; // 추가된 필드
     private String address;
     private String bank;
 
@@ -25,5 +24,5 @@ public class CustomerUpdateRequest {
     private String nationalityName;
 
     @JsonProperty("final_fee_percent")
-    private String finalFeePercent;
+    private String finalFeePercent; // String 타입으로 변경
 }

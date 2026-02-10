@@ -6,7 +6,7 @@ import com.quicktax.demo.domain.cases.TaxCase;
 import com.quicktax.demo.domain.cases.draft.*;
 import com.quicktax.demo.domain.ocr.OcrJob;
 import com.quicktax.demo.dto.refund.*;
-import com.quicktax.demo.repo.OcrJobRepository;
+import com.quicktax.demo.repo.ocr.OcrJobRepository;
 import com.quicktax.demo.repo.TaxCaseRepository;
 import com.quicktax.demo.repo.draft.*;
 import com.quicktax.demo.service.customer.CustomerService;

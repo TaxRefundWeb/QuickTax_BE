@@ -1,4 +1,4 @@
-package com.quicktax.demo.dto;
+package com.quicktax.demo.dto.refund;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
