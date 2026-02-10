@@ -1,7 +1,7 @@
 package com.quicktax.demo.api;
 
 import com.quicktax.demo.common.ApiResponse;
-import com.quicktax.demo.dto.LoginRequest;
+import com.quicktax.demo.dto.auth.LoginRequest;
 import com.quicktax.demo.service.auth.AuthService;
 import com.quicktax.demo.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;

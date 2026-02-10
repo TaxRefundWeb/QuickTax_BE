@@ -1,4 +1,4 @@
-package com.quicktax.demo.dto;
+package com.quicktax.demo.dto.customer;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

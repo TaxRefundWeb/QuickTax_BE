@@ -52,6 +52,10 @@ public class Customer {
     private String rrn;
 
     @Size(max = 20)
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Size(max = 20)
     @Column(name = "bank", length = 20)
     private String bank;
 
@@ -80,6 +84,7 @@ public class Customer {
             String name,
             String address,
             String rrn,
+            String phone,
             String bank,
             String bankNumber,
             String nationalityCode,
@@ -88,8 +93,9 @@ public class Customer {
     ) {
         this.taxCompany = taxCompany;
         this.name = name;
-        this.address = address;
         this.rrn = rrn;
+        this.phone = phone;
+        this.address = address;
         this.bank = bank;
         this.bankNumber = bankNumber;
         this.nationalityCode = nationalityCode;
@@ -98,10 +104,22 @@ public class Customer {
     }
 
     // 💡 메서드 파라미터도 Integer로 복구
-    public void updateBasicInfo(String address, String bank, String bankNumber, Integer finalFeePercent) {
+    public void updateBasicInfo(
+            String phone,
+            String address,
+            String bank,
+            String bankNumber,
+            String nationalityCode,
+            String nationalityName,
+            Integer finalFeePercent
+    ) {
+        this.phone = phone;
         this.address = address;
         this.bank = bank;
         this.bankNumber = bankNumber;
+        this.nationalityCode = nationalityCode;
+        this.nationalityName = nationalityName;
         this.finalFeePercent = finalFeePercent;
     }
+
 }

@@ -1,4 +1,4 @@
-package com.quicktax.demo.repo;
+package com.quicktax.demo.repo.calc;
 
 import com.quicktax.demo.domain.calc.CaseCalcResultDocument;
 import com.quicktax.demo.domain.calc.CaseCalcResultDocumentId;

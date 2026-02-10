@@ -1,4 +1,4 @@
-package com.quicktax.demo.dto;
+package com.quicktax.demo.dto.auth;
 
 import lombok.Getter;
 import lombok.Setter;

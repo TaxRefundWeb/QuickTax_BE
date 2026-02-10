@@ -1,4 +1,4 @@
-package com.quicktax.demo.repo;
+package com.quicktax.demo.repo.ocr;
 
 import com.quicktax.demo.domain.ocr.OcrJob;
 import org.springframework.data.jpa.repository.JpaRepository;

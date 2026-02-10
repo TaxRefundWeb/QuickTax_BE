@@ -1,17 +1,16 @@
-package com.quicktax.demo.dto;
+package com.quicktax.demo.dto.customer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
-@Builder
 @NoArgsConstructor
-@AllArgsConstructor
-public class CustomerDetailResponse {
+public class CustomerCreateRequest {
     private String name;
     private String rrn;
-    private String phone; // 추가된 필드
-    private String address;
+    private String phone;     // 추가
+    private String address;   // 추가
     private String bank;
 
     @JsonProperty("bank_number")
@@ -24,5 +23,5 @@ public class CustomerDetailResponse {
     private String nationalityName;
 
     @JsonProperty("final_fee_percent")
-    private String finalFeePercent; // String 타입으로 변경
+    private String finalFeePercent; // 예시의 "33"을 위해 String으로 설정
 }

@@ -1,0 +1,19 @@
+package com.quicktax.demo.repo.ocr;
+
+import com.quicktax.demo.domain.ocr.OcrResultPerCompany;
+import com.quicktax.demo.domain.ocr.OcrResultPerCompanyId;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+
+public interface OcrResultPerCompanyRepository extends JpaRepository<OcrResultPerCompany, OcrResultPerCompanyId> {
+
+    @Query("""
+        select p from OcrResultPerCompany p
+        where p.id.ocrResultId.caseId = :caseId
+        order by p.id.ocrResultId.caseYear asc, p.id.companyId asc
+    """)
+    List<OcrResultPerCompany> findByCaseIdOrderByYearCompany(@Param("caseId") Long caseId);
+}

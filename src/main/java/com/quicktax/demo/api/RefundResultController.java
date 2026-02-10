@@ -1,7 +1,7 @@
 package com.quicktax.demo.api;
 
 import com.quicktax.demo.common.ApiResponse;
-import com.quicktax.demo.dto.RefundResultsResponse;
+import com.quicktax.demo.dto.refund.RefundResultsResponse;
 
 import com.quicktax.demo.service.result.RefundResultService;
 import io.swagger.v3.oas.annotations.Operation;

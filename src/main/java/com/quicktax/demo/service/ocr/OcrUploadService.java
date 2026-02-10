@@ -4,9 +4,10 @@ import com.quicktax.demo.common.ApiException;
 import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.domain.cases.TaxCase;
 import com.quicktax.demo.domain.ocr.OcrJob;
-import com.quicktax.demo.dto.OcrPresignResponse;
-import com.quicktax.demo.dto.OcrUploadCompleteResponse;
-import com.quicktax.demo.repo.OcrJobRepository;
+import com.quicktax.demo.domain.ocr.OcrJobStatus;
+import com.quicktax.demo.dto.ocr.OcrPresignResponse;
+import com.quicktax.demo.dto.ocr.OcrUploadCompleteResponse;
+import com.quicktax.demo.repo.ocr.OcrJobRepository;
 import com.quicktax.demo.repo.TaxCaseRepository;
 import com.quicktax.demo.service.s3.OcrS3KeyService;
 import com.quicktax.demo.service.s3.S3PresignService;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Service
 public class OcrUploadService {
@@ -95,6 +97,16 @@ public class OcrUploadService {
                 .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "ocr_job 없음: presign 먼저"));
 
         String key = job.getOriginalS3Key();
+        if (key == null || key.isBlank()) {
+            throw new ApiException(ErrorCode.COMMON500, "original_s3_key 없음: presign 로직 확인 필요");
+        }
+
+        if (job.getStatus() != OcrJobStatus.WAITING_UPLOAD) {
+            return new OcrUploadCompleteResponse(
+                    key, null, null, null,
+                    job.getStatus(), job.getErrorCode(), job.getErrorMessage()
+            );
+        }
 
         final HeadObjectResponse head;
         try {
@@ -102,18 +114,38 @@ public class OcrUploadService {
                     .bucket(presignService.bucket())
                     .key(key)
                     .build());
+        } catch (S3Exception e) {
+            if (e.statusCode() == 404) {
+                job.markUploadNotFound("UPLOAD_NOT_FOUND: key=" + key);
+                return new OcrUploadCompleteResponse(
+                        key, null, null, null,
+                        job.getStatus(), job.getErrorCode(), job.getErrorMessage()
+                );
+            }
+            throw new ApiException(
+                    ErrorCode.COMMON500,
+                    "S3 headObject 실패: " + e.statusCode() + " - " + (e.awsErrorDetails() == null ? "" : e.awsErrorDetails().errorMessage())
+            );
         } catch (Exception e) {
-            throw new ApiException(ErrorCode.COMMON500,
-                    "S3 headObject 실패: " + e.getClass().getSimpleName() + " - " + (e.getMessage() == null ? "" : e.getMessage()));
+            //  SdkClientException 등 여기로
+            throw new ApiException(
+                    ErrorCode.COMMON500,
+                    "S3 headObject 예외: " + e.getClass().getSimpleName() + " - " + (e.getMessage() == null ? "" : e.getMessage())
+            );
         }
 
+        // 성공이면 PROCESSING 전환 + error clear
         job.markProcessing();
+
         return new OcrUploadCompleteResponse(
                 key,
                 head.contentLength(),
                 head.eTag(),
                 head.serverSideEncryptionAsString(),
-                job.getStatus()
+                job.getStatus(),
+                job.getErrorCode(),
+                job.getErrorMessage()
         );
     }
+
 }

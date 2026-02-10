@@ -47,10 +47,6 @@ public class OcrJob {
         this.errorMessage = null;
     }
 
-    public void markProcessing() {
-        this.status = OcrJobStatus.PROCESSING;
-    }
-
     public void markFailed(String errorCode, String errorMessage) {
         this.status = OcrJobStatus.FAILED;
         this.errorCode = errorCode;
@@ -59,5 +55,17 @@ public class OcrJob {
 
     public void markReady() {
         this.status = OcrJobStatus.READY;
+    }
+
+    public void markProcessing() {
+        this.status = OcrJobStatus.PROCESSING;
+        this.errorCode = null;
+        this.errorMessage = null;
+    }
+
+    public void markUploadNotFound(String message) {
+        this.status = OcrJobStatus.WAITING_UPLOAD;
+        this.errorCode = "UPLOAD_NOT_FOUND";
+        this.errorMessage = message;
     }
 }
