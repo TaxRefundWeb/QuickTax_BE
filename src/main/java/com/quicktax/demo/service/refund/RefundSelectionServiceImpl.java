@@ -51,15 +51,6 @@ public class RefundSelectionServiceImpl implements RefundSelectionService {
             LocalDate reductionStart = request.reduction_start();
             LocalDate reductionEnd = request.reduction_end();
 
-            if (!request.reduction_yn()) {
-                reductionStart = null;
-                reductionEnd = null;
-            } else {
-                if (reductionStart == null || reductionEnd == null)
-                    throw new ApiException(ErrorCode.BADREQ400, "reduction_yn=true면 reduction_start/end는 필수입니다.");
-                if (reductionStart.isAfter(reductionEnd))
-                    throw new ApiException(ErrorCode.BADREQ400, "reduction_start <= reduction_end 여야 합니다.");
-            }
 
             // 1) cases 저장
             TaxCase taxCase = new TaxCase(customer);
