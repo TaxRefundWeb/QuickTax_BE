@@ -8,7 +8,7 @@ import com.quicktax.demo.domain.ocr.OcrJob;
 import com.quicktax.demo.domain.ocr.OcrJobStatus;
 import com.quicktax.demo.dto.OcrConfirmRequest;
 import com.quicktax.demo.dto.OcrConfirmRequest.OcrYearData;
-import com.quicktax.demo.repo.OcrJobRepository;
+import com.quicktax.demo.repo.ocr.OcrJobRepository;
 import com.quicktax.demo.repo.TaxCaseRepository;
 // import com.quicktax.demo.repo.TaxCaseYearRepository; // 💡 리포지토리 경로 확인 후 주석 해제
 import com.quicktax.demo.service.result.RefundResultService;
