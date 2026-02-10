@@ -12,7 +12,7 @@ import java.util.List;
 @ToString
 public class OcrConfirmRequest {
 
-    // Root 키: "OCRData"
+    // 프론트엔드가 { "OCRData": [ ... ] } 형태로 보낸다고 가정
     @JsonProperty("OCRData")
     private List<OcrYearData> ocrData;
 
@@ -25,60 +25,75 @@ public class OcrConfirmRequest {
         private Integer caseYear;
 
         @JsonProperty("total_salary")
-        private Long totalSalary; // 총급여
+        private Long totalSalary;
 
         @JsonProperty("earned_income_deduction_amount")
-        private Long earnedIncomeDeduction; // 근로소득공제
+        private Long earnedIncomeDeduction;
 
         @JsonProperty("earned_income_amount")
-        private Long earnedIncomeAmount; // 근로소득금액
+        private Long earnedIncomeAmount;
 
         @JsonProperty("basic_deduction_self_amount")
-        private Long basicDeductionSelf; // 본인공제
+        private Long basicDeductionSelf;
 
         @JsonProperty("basic_deduction_spouse_amount")
-        private Long basicDeductionSpouse; // 배우자공제
+        private Long basicDeductionSpouse;
 
         @JsonProperty("basic_deduction_dependents_amount")
-        private Long basicDeductionDependents; // 부양가족공제
+        private Long basicDeductionDependents;
 
         @JsonProperty("national_pension_deduction_amount")
-        private Long nationalPensionDeduction; // 국민연금
+        private Long nationalPensionDeduction;
 
-        @JsonProperty("TotalSpecialIncomeDeduction") // 대소문자 주의
-        private Long totalSpecialIncomeDeduction; // 특별소득공제계
+        // 🚨 [수정 제안] 다른 필드들과 규칙 통일 (프론트와 확인 필수!)
+        // 기존: @JsonProperty("TotalSpecialIncomeDeduction")
+        @JsonProperty("total_special_income_deduction_amount")
+        private Long totalSpecialIncomeDeduction;
 
         @JsonProperty("adjusted_income_amount")
-        private Long adjustedIncomeAmount; // 차감소득금액
+        private Long adjustedIncomeAmount;
 
         @JsonProperty("other_income_deduction_total_amount")
-        private Long otherIncomeDeductionTotal; // 그밖의 소득공제
+        private Long otherIncomeDeductionTotal;
+
+        // 💡 [추가] 엔티티에는 있는데 DTO에 없던 필드 (그밖의 소득공제 추가분)
+        @JsonProperty("other_income_deduction_extra")
+        private Long otherIncomeDeductionExtra;
 
         @JsonProperty("tax_base_amount")
-        private Long taxBaseAmount; // 과세표준
+        private Long taxBaseAmount;
 
         @JsonProperty("calculated_tax_amount")
-        private Long calculatedTaxAmount; // 산출세액
+        private Long calculatedTaxAmount;
 
         @JsonProperty("tax_reduction_total_amount")
-        private Long taxReductionTotal; // 세액감면
+        private Long taxReductionTotal;
 
         @JsonProperty("earned_income_total_amount")
-        private Long earnedIncomeTotal; // 근로소득세액공제
+        private Long earnedIncomeTotal;
 
         @JsonProperty("eligible_children_count")
-        private Integer eligibleChildrenCount; // 자녀세액공제 인원
+        private Integer eligibleChildrenCount;
 
         @JsonProperty("childbirth_adoption_count")
-        private Integer childbirthAdoptionCount; // 출산입양
+        private Integer childbirthAdoptionCount;
+
+        // 💡 [추가] 엔티티에는 있는데 DTO에 없던 필드 (기부금)
+        @JsonProperty("donation_total_amount")
+        private Long donationTotalAmount;
+
+        // 💡 [추가] 엔티티에는 있는데 DTO에 없던 필드 (표준세액공제)
+        @JsonProperty("standard_tax_credit")
+        private Long standardTaxCredit;
 
         @JsonProperty("monthly_rent_tax_credit_amount")
-        private Long monthlyRentTaxCredit; // 월세세액공제
+        private Long monthlyRentTaxCredit;
 
         @JsonProperty("total_tax_credit_amount")
-        private Long totalTaxCredit; // 세액공제 계
+        private Long totalTaxCredit;
 
+        // 💡 [매핑 주의] 엔티티: determinedTaxAmountOrigin / JSON: determined_tax_amount
         @JsonProperty("determined_tax_amount")
-        private Long determinedTaxAmount; // 결정세액 (기납부세액)
+        private Long determinedTaxAmount;
     }
 }
