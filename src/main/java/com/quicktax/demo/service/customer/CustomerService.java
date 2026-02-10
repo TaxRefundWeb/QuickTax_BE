@@ -74,13 +74,6 @@ public class CustomerService {
     public CustomerDetailResponse updateCustomerInfo(Long cpaId, Long customerId, CustomerUpdateRequest request) {
         Customer customer = checkCustomerOwnership(cpaId, customerId);
 
-        // ✅ PATCH에서 name/rrn은 "들어오기만 해도" 차단 (요구사항 그대로)
-        if (request.getName() != null) {
-            throw new ApiException(ErrorCode.BADREQ400, "name은 수정할 수 없습니다.");
-        }
-        if (request.getRrn() != null) {
-            throw new ApiException(ErrorCode.BADREQ400, "rrn은 수정할 수 없습니다.");
-        }
 
         // ✅ 부분 수정: null이면 기존 값 유지
         String phone = request.getPhone() != null ? normalizePhone(request.getPhone()) : customer.getPhone();
