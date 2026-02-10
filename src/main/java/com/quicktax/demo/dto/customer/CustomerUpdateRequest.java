@@ -9,9 +9,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CustomerUpdateRequest {
-    // 수정 불가(검증용으로만 받음)
-    private String name;
-    private String rrn;
 
     @JsonProperty("address")
     private String address;
@@ -32,5 +29,5 @@ public class CustomerUpdateRequest {
     private String finalFeePercent;
 
     @JsonProperty("phone")
-    private String phone; // 응답 만들 때만 쓰는 듯
+    private String phone;
 }
