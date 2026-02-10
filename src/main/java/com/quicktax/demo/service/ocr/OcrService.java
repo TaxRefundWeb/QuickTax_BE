@@ -3,14 +3,15 @@ package com.quicktax.demo.service.ocr;
 import com.quicktax.demo.common.ApiException;
 import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.domain.cases.TaxCase;
-// import com.quicktax.demo.domain.cases.TaxCaseYear; // 💡 엔티티 경로 확인 후 주석 해제
 import com.quicktax.demo.domain.ocr.OcrJob;
 import com.quicktax.demo.domain.ocr.OcrJobStatus;
+import com.quicktax.demo.domain.ocr.OcrResult;
+import com.quicktax.demo.domain.ocr.OcrResultId; // 💡 복합키 Import
 import com.quicktax.demo.dto.OcrConfirmRequest;
 import com.quicktax.demo.dto.OcrConfirmRequest.OcrYearData;
-import com.quicktax.demo.repo.ocr.OcrJobRepository;
 import com.quicktax.demo.repo.TaxCaseRepository;
-// import com.quicktax.demo.repo.TaxCaseYearRepository; // 💡 리포지토리 경로 확인 후 주석 해제
+import com.quicktax.demo.repo.ocr.OcrJobRepository;
+import com.quicktax.demo.repo.ocr.OcrResultRepository; // 💡 저장소 Import
 import com.quicktax.demo.service.result.RefundResultService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,17 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class OcrService {
 
     private final TaxCaseRepository taxCaseRepository;
-    private final OcrJobRepository ocrJobRepository; // 💡 상태 확인을 위해 추가
-    private final RefundResultService refundCalculationService; // 계산 서비스
-
-    // 💡 [TODO] 팀원의 리포지토리 코드가 머지되면 주석을 해제하고 생성자를 주입받으세요.
-    // private final TaxCaseYearRepository taxCaseYearRepository;
+    private final OcrJobRepository ocrJobRepository;
+    private final OcrResultRepository ocrResultRepository; // 💡 데이터를 저장할 리포지토리
+    private final RefundResultService refundCalculationService;
 
     /**
      * OCR 확정 및 환급액 계산 요청 처리
      * 1. Case 및 권한 검증
-     * 2. OCR 완료 상태 검증 (완료되지 않았으면 409 리턴)
-     * 3. DB에 수정된 OCR 데이터 저장
+     * 2. OCR 완료 상태 검증 (완료되지 않았으면 409, 실패했으면 500 리턴)
+     * 3. DB(OcrResult)에 수정된 데이터 저장 (없으면 생성, 있으면 업데이트)
      * 4. 환급액 계산 로직 실행
      */
     @Transactional
@@ -49,59 +48,36 @@ public class OcrService {
             throw new ApiException(ErrorCode.AUTH403, "권한이 존재하지 않습니다. 다시 로그인 해주세요.");
         }
 
-        // 3. OCR 작업 상태 확인 (409 Conflict 체크)
+        // 3. OCR 작업 상태 확인
         OcrJob ocrJob = ocrJobRepository.findById(caseId)
                 .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "OCR 요청 내역이 존재하지 않습니다."));
 
-        // 상태가 READY(완료)가 아니라면 에러 발생
+        // 상태 검사: 실패(FAILED) -> 500 에러 / 미완료(!READY) -> 409 에러
+        if (ocrJob.getStatus() == OcrJobStatus.FAILED) {
+            throw new ApiException(ErrorCode.COMMON500, "OCR 분석에 실패했습니다. 이미지를 다시 업로드해주세요.");
+        }
         if (ocrJob.getStatus() != OcrJobStatus.READY) {
-            // 💡 ErrorCode에 COMMON409가 정의되어 있어야 합니다.
             throw new ApiException(ErrorCode.OCR409, "OCR 분석이 아직 완료되지 않았습니다. 잠시 후 다시 시도해주세요.");
         }
 
-        // 4. [저장 단계] 요청받은 연도별 데이터를 DB에 업데이트 (덮어쓰기)
+        // 4. [저장 단계] OcrResult 테이블에 데이터 저장 (핵심 로직)
         for (OcrYearData data : request.getOcrData()) {
-            log.info("OCR 확정 데이터 저장 중... 연도: {}, 총급여: {}", data.getCaseYear(), data.getTotalSalary());
+            log.info("OCR 확정 데이터 저장: CaseId={}, 연도={}, 총급여={}", caseId, data.getCaseYear(), data.getTotalSalary());
 
-            // 💡 [TODO] 팀원의 엔티티(TaxCaseYear)가 준비되면 아래 주석을 풀고 사용하세요.
-            /*
-            // 4-1. 해당 연도의 데이터 조회 (없으면 생성)
-            TaxCaseYear caseYear = taxCaseYearRepository.findByTaxCaseAndYear(taxCase, data.getCaseYear())
-                    .orElseGet(() -> TaxCaseYear.builder()
-                            .taxCase(taxCase)
-                            .year(data.getCaseYear())
-                            .build());
+            // 4-1. 복합키(Composite Key) 생성
+            OcrResultId resultId = new OcrResultId(caseId, data.getCaseYear());
 
-            // 4-2. 데이터 업데이트
-            caseYear.setTotalSalary(data.getTotalSalary());
-            caseYear.setEarnedIncomeDeduction(data.getEarnedIncomeDeduction());
-            caseYear.setEarnedIncomeAmount(data.getEarnedIncomeAmount());
-            caseYear.setBasicDeductionSelf(data.getBasicDeductionSelf());
-            caseYear.setBasicDeductionSpouse(data.getBasicDeductionSpouse());
-            caseYear.setBasicDeductionDependents(data.getBasicDeductionDependents());
-            caseYear.setNationalPensionDeduction(data.getNationalPensionDeduction());
-            caseYear.setTotalSpecialIncomeDeduction(data.getTotalSpecialIncomeDeduction());
-            caseYear.setAdjustedIncomeAmount(data.getAdjustedIncomeAmount());
-            caseYear.setOtherIncomeDeductionTotal(data.getOtherIncomeDeductionTotal());
-            caseYear.setTaxBaseAmount(data.getTaxBaseAmount());
-            caseYear.setCalculatedTaxAmount(data.getCalculatedTaxAmount());
-            caseYear.setTaxReductionTotal(data.getTaxReductionTotal());
-            caseYear.setEarnedIncomeTotal(data.getEarnedIncomeTotal());
-            caseYear.setEligibleChildrenCount(data.getEligibleChildrenCount());
-            caseYear.setChildbirthAdoptionCount(data.getChildbirthAdoptionCount());
-            caseYear.setMonthlyRentTaxCredit(data.getMonthlyRentTaxCredit());
-            caseYear.setTotalTaxCredit(data.getTotalTaxCredit());
-            caseYear.setDeterminedTaxAmount(data.getDeterminedTaxAmount());
+            // 4-2. 데이터 조회 (없으면 새로 생성)
+            OcrResult ocrResult = ocrResultRepository.findById(resultId)
+                    .orElseGet(() -> new OcrResult(taxCase, data.getCaseYear()));
 
-            // 4-3. 저장
-            taxCaseYearRepository.save(caseYear);
-            */
+            // 4-3. 데이터 업데이트 (DTO -> Entity)
+            // 엔티티에 추가한 updateData 메서드를 사용해 값을 덮어씁니다.
+            ocrResult.updateData(data);
+
+            // 4-4. 저장
+            ocrResultRepository.save(ocrResult);
         }
-
-        // 데이터 반영 (Flush) - 계산 로직에서 최신 데이터를 읽기 위함
-        // if (taxCaseYearRepository != null) {
-        //     taxCaseYearRepository.flush();
-        // }
 
         // 5. [계산 단계] 환급액 계산 실행
         log.info("Case ID: {} 환급액 계산 시작...", caseId);
