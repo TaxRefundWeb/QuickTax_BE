@@ -24,7 +24,7 @@ public class SqsOcrConsumer {
     private String queueUrl;
 
     // 3초마다 폴링. long polling(WaitTimeSeconds=20)이라 실제 호출은 덜 난다.
-    @Scheduled(fixedDelay = 3000)
+    // 코드 수정 끝나면 풀어야 함 @Scheduled(fixedDelay = 3000)
     public void poll() {
         ReceiveMessageRequest req = ReceiveMessageRequest.builder()
                 .queueUrl(queueUrl)
