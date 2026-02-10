@@ -6,6 +6,7 @@ import com.quicktax.demo.domain.calc.*;
 import com.quicktax.demo.domain.cases.TaxCase;
 import com.quicktax.demo.dto.calc.CalcConfirmRequest;
 import com.quicktax.demo.dto.calc.CalcConfirmRequest.YearScenario;
+import com.quicktax.demo.dto.calc.CalcDocumentResponse; // 💡 DTO Import 추가
 import com.quicktax.demo.repo.TaxCaseRepository;
 import com.quicktax.demo.repo.calc.CaseCalcResultDocumentAllRepository;
 import com.quicktax.demo.repo.calc.CaseCalcResultDocumentRepository;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -37,6 +39,7 @@ public class ResultService {
 
     // (가짜) 파일 생성 로직
     private String generateFileUrl(Long caseId, Integer year, String type) {
+        // 실제로는 S3 업로드 로직이 들어갈 자리
         return "https://s3.quicktax.com/files/" + caseId + "/" + year + "_" + type + ".pdf";
     }
 
@@ -44,15 +47,17 @@ public class ResultService {
         return "https://s3.quicktax.com/files/" + caseId + "/total_result.zip";
     }
 
+    /**
+     * [POST] 계산식 확정 및 결과 파일 생성
+     */
     @Transactional
-    // 💡 [수정] 권한 검사를 위해 cpaId 파라미터 추가
     public void confirmAndGenerateFiles(Long cpaId, Long caseId, CalcConfirmRequest request) {
 
         // 1. Case 조회
         TaxCase taxCase = taxCaseRepository.findById(caseId)
                 .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "존재하지 않는 Case입니다."));
 
-        // 2. [추가] 권한 검증 (AUTH403)
+        // 2. 권한 검증 (AUTH403)
         Long ownerCpaId = taxCase.getCustomer().getTaxCompany().getCpaId();
         if (!cpaId.equals(ownerCpaId)) {
             throw new ApiException(ErrorCode.AUTH403, "권한이 존재하지 않습니다.");
@@ -66,7 +71,6 @@ public class ResultService {
             String code = scenario.getScenarioCode();
 
             // 3-1. 시나리오 유효성 검증
-            // 💡 [수정] COMMON400 -> COMMON404 ("계산 방식이 존재하지 않습니다" 의미 활용)
             if (!ALLOWED_SCENARIOS.contains(code)) {
                 throw new ApiException(ErrorCode.COMMON404, "존재하지 않는 계산 방식(시나리오)입니다: " + code);
             }
@@ -86,6 +90,7 @@ public class ResultService {
             // 3-4. 연도별 파일 생성 및 저장
             String fileUrl = generateFileUrl(caseId, year, "report");
 
+            // 기존 데이터가 있다면 덮어쓰기 위해 new 객체 생성 후 저장 (save는 update/insert 모두 수행)
             CaseCalcResultDocument document = new CaseCalcResultDocument(taxCase, year, fileUrl);
             documentRepository.save(document);
         }
@@ -97,5 +102,40 @@ public class ResultService {
         documentAllRepository.save(documentAll);
 
         log.info("CaseId: {} 결과 확정 완료. 총 환급액: {}", caseId, totalRefundAmount);
+    }
+
+    /**
+     * [GET] 최종 완료 결과 조회 (문서 URL 및 총 환급액)
+     * 💡 [추가됨] 새로 요청하신 조회 로직
+     */
+    @Transactional(readOnly = true)
+    public CalcDocumentResponse getResultDocuments(Long cpaId, Long caseId) {
+
+        // 1. Case 조회
+        TaxCase taxCase = taxCaseRepository.findById(caseId)
+                .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "존재하지 않는 Case입니다."));
+
+        // 2. 권한 검증
+        Long ownerCpaId = taxCase.getCustomer().getTaxCompany().getCpaId();
+        if (!cpaId.equals(ownerCpaId)) {
+            throw new ApiException(ErrorCode.AUTH403, "권한이 존재하지 않습니다.");
+        }
+
+        // 3. 전체 결과(Total) 조회
+        // (만약 데이터가 없다면, 아직 '계산식 확정' 단계를 거치지 않은 것이므로 404 리턴)
+        CaseCalcResultDocumentAll totalDoc = documentAllRepository.findById(caseId)
+                .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "아직 결과 문서가 생성되지 않았습니다. 계산식 확정을 먼저 진행해주세요."));
+
+        // 4. 연도별 문서(Yearly) 조회
+        // 리포지토리에 findAllByIdCaseId 메서드가 있어야 함
+        List<CaseCalcResultDocument> yearDocs = documentRepository.findAllByIdCaseIdOrderByIdCaseYearAsc(caseId);
+
+        // 5. DTO 변환 및 반환
+        return CalcDocumentResponse.builder()
+                .totalResult(CalcDocumentResponse.TotalResult.from(totalDoc))
+                .yearDocuments(yearDocs.stream()
+                        .map(CalcDocumentResponse.YearDocument::from)
+                        .collect(Collectors.toList()))
+                .build();
     }
 }
