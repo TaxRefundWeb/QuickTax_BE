@@ -2,7 +2,7 @@ package com.quicktax.demo.domain.calc;
 
 import com.quicktax.demo.domain.cases.TaxCase;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -21,13 +21,20 @@ public class CaseCalcResultDocumentAll {
     @JoinColumn(name = "case_id", nullable = false)
     private TaxCase taxCase;
 
-    @Column(name = "url", nullable = false, columnDefinition = "text")
-    @NotBlank
-    private String url;
+    // total_URL TEXT
+    @Column(name = "total_url", nullable = false, columnDefinition = "text")
+    @NotNull
+    private String totalUrl;
 
-    public CaseCalcResultDocumentAll(TaxCase taxCase, String url) {
+    // total_refund_amount BIGINT
+    @Column(name = "total_refund_amount", nullable = false)
+    @NotNull
+    private Long totalRefundAmount;
+
+    public CaseCalcResultDocumentAll(TaxCase taxCase, String totalUrl, Long totalRefundAmount) {
         this.taxCase = taxCase;
         this.caseId = taxCase.getCaseId();
-        this.url = url;
+        this.totalUrl = totalUrl;
+        this.totalRefundAmount = totalRefundAmount;
     }
 }
