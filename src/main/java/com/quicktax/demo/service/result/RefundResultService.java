@@ -8,11 +8,13 @@ import com.quicktax.demo.dto.refund.RefundResultsResponse;
 import com.quicktax.demo.repo.calc.CaseCalcResultRepository;
 import com.quicktax.demo.repo.TaxCaseRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -82,5 +84,21 @@ public class RefundResultService {
         }
 
         return new RefundResultsResponse(yearResults);
+    }
+
+    @Transactional // 쓰기 권한 필요
+    public void calculateRefund(Long caseId) {
+        log.info("Case ID: {} 에 대한 환급액 계산을 시작합니다.", caseId);
+
+        // TODO: 여기에 실제 계산 로직(TaxCase 데이터 읽기 -> 계산 -> CaseCalcResult 저장)을 구현해야 합니다.
+        // 임시로 로그만 남깁니다.
+
+        /* 예시:
+        TaxCase taxCase = taxCaseRepository.findById(caseId).orElseThrow();
+        // 1. 계산 수행
+        // 2. caseCalcResultRepository.save(...)
+        */
+
+        log.info("Case ID: {} 계산 완료 (현재는 빈 껍데기 메서드입니다)", caseId);
     }
 }
