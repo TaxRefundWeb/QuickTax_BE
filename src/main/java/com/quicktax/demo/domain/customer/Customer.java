@@ -88,8 +88,8 @@ public class Customer {
     ) {
         this.taxCompany = taxCompany;
         this.name = name;
-        this.address = address;
         this.rrn = rrn;
+        this.address = address;
         this.bank = bank;
         this.bankNumber = bankNumber;
         this.nationalityCode = nationalityCode;
@@ -98,10 +98,20 @@ public class Customer {
     }
 
     // 💡 메서드 파라미터도 Integer로 복구
-    public void updateBasicInfo(String address, String bank, String bankNumber, Integer finalFeePercent) {
+    public void updateBasicInfo(
+            String address,
+            String bank,
+            String bankNumber,
+            String nationalityCode,
+            String nationalityName,
+            Integer finalFeePercent
+    ) {
         this.address = address;
         this.bank = bank;
         this.bankNumber = bankNumber;
+        this.nationalityCode = nationalityCode;
+        this.nationalityName = nationalityName;
         this.finalFeePercent = finalFeePercent;
     }
+
 }

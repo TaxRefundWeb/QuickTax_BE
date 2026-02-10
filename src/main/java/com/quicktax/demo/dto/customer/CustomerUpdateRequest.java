@@ -9,10 +9,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CustomerUpdateRequest {
+    // 수정 불가(검증용으로만 받음)
     private String name;
     private String rrn;
-    private String phone; // 💡 이 필드가 있어야 request.getPhone()이 작동합니다.
+
+    @JsonProperty("address")
     private String address;
+
+    @JsonProperty("bank")
     private String bank;
 
     @JsonProperty("bank_number")
@@ -26,4 +30,7 @@ public class CustomerUpdateRequest {
 
     @JsonProperty("final_fee_percent")
     private String finalFeePercent;
+
+    @JsonProperty("phone")
+    private String phone; // 응답 만들 때만 쓰는 듯
 }
