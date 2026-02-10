@@ -97,17 +97,18 @@ public class OcrUploadService {
                 .orElseThrow(() -> new ApiException(ErrorCode.COMMON404, "ocr_job 없음: presign 먼저"));
 
         String key = job.getOriginalS3Key();
-
-        final HeadObjectResponse head;
-
+        if (key == null || key.isBlank()) {
+            throw new ApiException(ErrorCode.COMMON500, "original_s3_key 없음: presign 로직 확인 필요");
+        }
 
         if (job.getStatus() != OcrJobStatus.WAITING_UPLOAD) {
             return new OcrUploadCompleteResponse(
-                    job.getOriginalS3Key(), null, null, null,
+                    key, null, null, null,
                     job.getStatus(), job.getErrorCode(), job.getErrorMessage()
             );
         }
 
+        final HeadObjectResponse head;
         try {
             head = s3Client.headObject(HeadObjectRequest.builder()
                     .bucket(presignService.bucket())
@@ -115,20 +116,36 @@ public class OcrUploadService {
                     .build());
         } catch (S3Exception e) {
             if (e.statusCode() == 404) {
-                job.markUploadNotFound("UPLOAD_NOT_FOUND: ... key=" + key);
+                job.markUploadNotFound("UPLOAD_NOT_FOUND: key=" + key);
                 return new OcrUploadCompleteResponse(
                         key, null, null, null,
                         job.getStatus(), job.getErrorCode(), job.getErrorMessage()
                 );
             }
-            throw new ApiException(ErrorCode.COMMON500, "S3 headObject 실패: ...");
+            throw new ApiException(
+                    ErrorCode.COMMON500,
+                    "S3 headObject 실패: " + e.statusCode() + " - " + (e.awsErrorDetails() == null ? "" : e.awsErrorDetails().errorMessage())
+            );
+        } catch (Exception e) {
+            //  SdkClientException 등 여기로
+            throw new ApiException(
+                    ErrorCode.COMMON500,
+                    "S3 headObject 예외: " + e.getClass().getSimpleName() + " - " + (e.getMessage() == null ? "" : e.getMessage())
+            );
         }
 
+        // 성공이면 PROCESSING 전환 + error clear
         job.markProcessing();
-        return new OcrUploadCompleteResponse(
-                key, head.contentLength(), head.eTag(), head.serverSideEncryptionAsString(),
-                job.getStatus(), job.getErrorCode(), job.getErrorMessage()
-        );
 
+        return new OcrUploadCompleteResponse(
+                key,
+                head.contentLength(),
+                head.eTag(),
+                head.serverSideEncryptionAsString(),
+                job.getStatus(),
+                job.getErrorCode(),
+                job.getErrorMessage()
+        );
     }
+
 }
