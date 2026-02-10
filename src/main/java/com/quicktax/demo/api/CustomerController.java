@@ -1,7 +1,11 @@
 package com.quicktax.demo.api;
 
 import com.quicktax.demo.common.ApiResponse;
-import com.quicktax.demo.dto.*;
+import com.quicktax.demo.dto.customer.CustomerCreateRequest;
+import com.quicktax.demo.dto.customer.CustomerDetailResponse;
+import com.quicktax.demo.dto.customer.CustomerUpdateRequest;
+import com.quicktax.demo.dto.customer.CustomersResponse;
+import com.quicktax.demo.dto.past.PastDataResponse;
 import com.quicktax.demo.service.customer.CustomerService;
 import com.quicktax.demo.service.past.RefundService;
 import io.swagger.v3.oas.annotations.Operation;

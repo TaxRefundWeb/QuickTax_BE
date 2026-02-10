@@ -1,11 +1,13 @@
-package com.quicktax.demo.dto;
+package com.quicktax.demo.dto.ocr;
 
 import com.quicktax.demo.domain.ocr.OcrJobStatus;
 
 public record OcrUploadCompleteResponse(
         String s3Key,
-        long contentLength,
+        Long contentLength,
         String eTag,
         String serverSideEncryption,
-        OcrJobStatus status
+        OcrJobStatus status,
+        String errorCode,
+        String errorMessage
 ) {}

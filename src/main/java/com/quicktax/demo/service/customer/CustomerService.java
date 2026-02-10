@@ -4,7 +4,7 @@ import com.quicktax.demo.common.ApiException;
 import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.domain.customer.Customer;
 import com.quicktax.demo.domain.auth.TaxCompany;
-import com.quicktax.demo.dto.*;
+import com.quicktax.demo.dto.customer.*;
 import com.quicktax.demo.repo.CustomerRepository;
 import com.quicktax.demo.repo.TaxCompanyRepository;
 import lombok.RequiredArgsConstructor;

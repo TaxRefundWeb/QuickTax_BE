@@ -4,9 +4,10 @@ import com.quicktax.demo.common.ApiException;
 import com.quicktax.demo.common.ErrorCode;
 import com.quicktax.demo.domain.cases.TaxCase;
 import com.quicktax.demo.domain.ocr.OcrJob;
-import com.quicktax.demo.dto.OcrPresignResponse;
-import com.quicktax.demo.dto.OcrUploadCompleteResponse;
-import com.quicktax.demo.repo.OcrJobRepository;
+import com.quicktax.demo.domain.ocr.OcrJobStatus;
+import com.quicktax.demo.dto.ocr.OcrPresignResponse;
+import com.quicktax.demo.dto.ocr.OcrUploadCompleteResponse;
+import com.quicktax.demo.repo.ocr.OcrJobRepository;
 import com.quicktax.demo.repo.TaxCaseRepository;
 import com.quicktax.demo.service.s3.OcrS3KeyService;
 import com.quicktax.demo.service.s3.S3PresignService;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Service
 public class OcrUploadService {
@@ -97,23 +99,36 @@ public class OcrUploadService {
         String key = job.getOriginalS3Key();
 
         final HeadObjectResponse head;
+
+
+        if (job.getStatus() != OcrJobStatus.WAITING_UPLOAD) {
+            return new OcrUploadCompleteResponse(
+                    job.getOriginalS3Key(), null, null, null,
+                    job.getStatus(), job.getErrorCode(), job.getErrorMessage()
+            );
+        }
+
         try {
             head = s3Client.headObject(HeadObjectRequest.builder()
                     .bucket(presignService.bucket())
                     .key(key)
                     .build());
-        } catch (Exception e) {
-            throw new ApiException(ErrorCode.COMMON500,
-                    "S3 headObject 실패: " + e.getClass().getSimpleName() + " - " + (e.getMessage() == null ? "" : e.getMessage()));
+        } catch (S3Exception e) {
+            if (e.statusCode() == 404) {
+                job.markUploadNotFound("UPLOAD_NOT_FOUND: ... key=" + key);
+                return new OcrUploadCompleteResponse(
+                        key, null, null, null,
+                        job.getStatus(), job.getErrorCode(), job.getErrorMessage()
+                );
+            }
+            throw new ApiException(ErrorCode.COMMON500, "S3 headObject 실패: ...");
         }
 
         job.markProcessing();
         return new OcrUploadCompleteResponse(
-                key,
-                head.contentLength(),
-                head.eTag(),
-                head.serverSideEncryptionAsString(),
-                job.getStatus()
+                key, head.contentLength(), head.eTag(), head.serverSideEncryptionAsString(),
+                job.getStatus(), job.getErrorCode(), job.getErrorMessage()
         );
+
     }
 }

@@ -1,8 +1,8 @@
 package com.quicktax.demo.api;
 
 import com.quicktax.demo.common.ApiResponse;
-import com.quicktax.demo.dto.OcrPresignResponse;
-import com.quicktax.demo.dto.OcrUploadCompleteResponse;
+import com.quicktax.demo.dto.ocr.OcrPresignResponse;
+import com.quicktax.demo.dto.ocr.OcrUploadCompleteResponse;
 import com.quicktax.demo.service.ocr.OcrUploadService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
