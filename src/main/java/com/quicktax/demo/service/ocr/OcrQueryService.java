@@ -110,4 +110,6 @@ public class OcrQueryService {
 
         return new OcrDataResponse(job.getStatus(), job.getErrorCode(), job.getErrorMessage(), data);
     }
+
+
 }

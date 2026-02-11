@@ -72,7 +72,7 @@ public class OcrService {
                     .orElseGet(() -> new OcrResult(taxCase, data.getCaseYear()));
 
             // 4-3. 데이터 업데이트 (DTO -> Entity)
-            // 엔티티에 추가한 updateData 메서드를 사용해 값을 덮어씁니다.
+
             ocrResult.updateData(data);
 
             // 4-4. 저장

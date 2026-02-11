@@ -97,8 +97,7 @@ public class OcrUploadService {
         OcrStartMessage msg = new OcrStartMessage();
         msg.setType("OCR_START");
         msg.setCaseId(caseId);
-        msg.setOriginalS3Key(originalS3Key);
-        msg.setRequestedAt(requestedAt.toString());
+
 
         String body = objectMapper.writeValueAsString(msg);
 
@@ -218,7 +217,7 @@ public class OcrUploadService {
         try {
             sendOcrStart(caseId, key, now);
         } catch (Exception e) {
-            // 큐잉 실패했는데 PROCESSING 유지하면 운영에서 지옥 열린다 → FAILED로 확정
+            // 큐잉 실패했는데 PROCESSING 유지하면 ㅈ되 → FAILED로 확정
             job.markFailed(
                     OcrJobErrorCode.QUEUE_SEND_ERROR.name(),
                     "QUEUE_SEND_ERROR: " + e.getClass().getSimpleName() + " - " + (e.getMessage() == null ? "" : e.getMessage())
