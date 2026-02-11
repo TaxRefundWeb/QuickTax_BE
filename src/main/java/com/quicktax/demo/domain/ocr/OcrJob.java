@@ -6,8 +6,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
-
 @Entity
 @Table(name = "ocr_job")
 @Getter
@@ -36,12 +34,6 @@ public class OcrJob {
     @Column(name = "error_message", columnDefinition = "text")
     private String errorMessage;
 
-    @Column(name = "processing_started_at")
-    private Instant processingStartedAt;
-
-    @Column(name = "last_heartbeat_at")
-    private Instant lastHeartbeatAt;
-
     public OcrJob(TaxCase taxCase) {
         this.taxCase = taxCase;
         this.status = OcrJobStatus.WAITING_UPLOAD;
@@ -52,31 +44,20 @@ public class OcrJob {
         this.originalS3Key = s3Key;
         this.errorCode = null;
         this.errorMessage = null;
-        this.processingStartedAt = null;
-        this.lastHeartbeatAt = null;
     }
 
     public void markFailed(String errorCode, String errorMessage) {
         this.status = OcrJobStatus.FAILED;
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
-        this.processingStartedAt = null;
-        this.lastHeartbeatAt = null;
     }
 
     public void markReady() {
         this.status = OcrJobStatus.READY;
     }
 
-    // 기존 호출부 호환(남아있어도 컴파일 깨지지 않게)
     public void markProcessing() {
-        markProcessing(Instant.now());
-    }
-
-    public void markProcessing(Instant now) {
         this.status = OcrJobStatus.PROCESSING;
-        this.processingStartedAt = now;
-        this.lastHeartbeatAt = now;
         this.errorCode = null;
         this.errorMessage = null;
     }
@@ -85,12 +66,5 @@ public class OcrJob {
         this.status = OcrJobStatus.WAITING_UPLOAD;
         this.errorCode = OcrJobErrorCode.UPLOAD_NOT_FOUND.name();
         this.errorMessage = message;
-        this.processingStartedAt = null;
-        this.lastHeartbeatAt = null;
-    }
-
-    // Step3~4에서 워커가 갱신
-    public void heartbeat(Instant now) {
-        this.lastHeartbeatAt = now;
     }
 }

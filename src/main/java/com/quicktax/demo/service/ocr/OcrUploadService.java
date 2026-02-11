@@ -212,7 +212,7 @@ public class OcrUploadService {
 
         // (a) HEAD 성공 -> PROCESSING + timestamps
         Instant now = Instant.now();
-        job.markProcessing(now);
+        job.markProcessing();
 
         // SQS OCR_START 메시지 전송
         try {
