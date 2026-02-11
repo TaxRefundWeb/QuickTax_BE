@@ -28,5 +28,8 @@ public class OcrResultPerCompany {
         this.id = new OcrResultPerCompanyId(ocrResult.getId(), companyId);
         this.salary = salary;
     }
-}
 
+    public void updateSalary(Long salary) {
+        this.salary = salary;
+    }
+}

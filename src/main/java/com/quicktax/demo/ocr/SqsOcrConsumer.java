@@ -24,7 +24,7 @@ public class SqsOcrConsumer {
     private String queueUrl;
 
     // 3초마다 폴링. long polling(WaitTimeSeconds=20)이라 실제 호출은 덜 난다.
-    //@Scheduled(fixedDelay = 3000)
+    @Scheduled(fixedDelayString = "${app.sqs.poll-delay-ms:3000}")
     public void poll() {
         ReceiveMessageRequest req = ReceiveMessageRequest.builder()
                 .queueUrl(queueUrl)
@@ -47,7 +47,7 @@ public class SqsOcrConsumer {
                     continue;
                 }
 
-                ocrPipelineService.handle(msg); // 여기서 S3 다운로드 + OCR/파싱 + DB 업데이트
+                ocrPipelineService.handle(msg); // 여기서 PDF 분할 + CLOVA OCR + S3 저장 + DB 업데이트 + READY/FAILED
 
                 delete(m); // 성공한 것만 delete (중요)
             } catch (Exception e) {

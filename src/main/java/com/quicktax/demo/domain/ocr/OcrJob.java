@@ -54,6 +54,8 @@ public class OcrJob {
 
     public void markReady() {
         this.status = OcrJobStatus.READY;
+        this.errorCode = null;
+        this.errorMessage = null;
     }
 
     public void markProcessing() {
