@@ -36,7 +36,6 @@ public class OcrJob {
 
     public OcrJob(TaxCase taxCase) {
         this.taxCase = taxCase;
-        // 두시간의 오류 너때문이니 시발 혹시? this.caseId = taxCase.getCaseId();
         this.status = OcrJobStatus.WAITING_UPLOAD;
     }
 
@@ -65,7 +64,7 @@ public class OcrJob {
 
     public void markUploadNotFound(String message) {
         this.status = OcrJobStatus.WAITING_UPLOAD;
-        this.errorCode = "UPLOAD_NOT_FOUND";
+        this.errorCode = OcrJobErrorCode.UPLOAD_NOT_FOUND.name();
         this.errorMessage = message;
     }
 }

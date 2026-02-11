@@ -1,7 +1,7 @@
 package com.quicktax.demo.api;
 
 import com.quicktax.demo.common.ApiResponse;
-import com.quicktax.demo.config.UserDetailsImpl;
+import com.quicktax.demo.config.UserDetailsImpl; // 💡 Import 확인 필수
 import com.quicktax.demo.dto.calc.CalcConfirmRequest;
 import com.quicktax.demo.dto.calc.CalcDocumentResponse;
 import com.quicktax.demo.dto.refund.RefundResultsResponse;
@@ -40,7 +40,7 @@ public class ResultController {
     @Operation(summary = "계산식 확정 및 결과 파일 생성 요청", description = "선택한 시나리오로 계산을 확정하고 결과 파일(PDF/ZIP)을 생성합니다.")
     @PostMapping("/{caseId}")
     public ApiResponse<String> confirmCalculation(
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @AuthenticationPrincipal UserDetailsImpl userDetails, // 💡 Long cpaId 대신 UserDetailsImpl 사용
             @PathVariable Long caseId,
             @Valid @RequestBody CalcConfirmRequest request
     ) {
@@ -54,7 +54,7 @@ public class ResultController {
     @Operation(summary = "최종 완료 결과(문서 및 환급액) 조회", description = "확정된 계산 결과에 따른 최종 문서 파일과 총 환급액을 조회합니다.")
     @GetMapping("/{caseId}/documents")
     public ApiResponse<CalcDocumentResponse> getResultDocuments(
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @AuthenticationPrincipal UserDetailsImpl userDetails, // 💡 Long cpaId 대신 UserDetailsImpl 사용
             @PathVariable Long caseId
     ) {
         // ResultService를 호출하여 최종 문서 정보 조회

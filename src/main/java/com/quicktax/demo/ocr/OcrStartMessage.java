@@ -3,12 +3,16 @@ package com.quicktax.demo.ocr;
 import lombok.Getter;
 import lombok.Setter;
 
-@Getter @Setter
+/**
+ * Step2(/complete)에서 SQS로 보내는 최소 메시지.
+ *
+ * 요구사항: caseId, originalS3Key, requestedAt (+ type)
+ */
+@Getter
+@Setter
 public class OcrStartMessage {
-    private String type;     // "OCR_START"
-    private String env;      // "stg"
-    private Long caseId;     // 8
-    private String bucket;   // quicktax-uploads-...
-    private String rawS3Key; // stg/cases/8/inbox/raw/....pdf
+    private String type;          // "OCR_START"
+    private Long caseId;          // caseId = jobId
+    private String originalS3Key; // stg/cases/{caseId}/inbox/raw/{jobId}.pdf
+    private String requestedAt;   // Instant.toString()
 }
-
