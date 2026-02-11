@@ -24,7 +24,7 @@ public enum ErrorCode {
 
     // 💡 4. OCR 관련 에러 (추가됨)
     // OCR 처리가 완료되지 않은 상태에서 확정을 시도할 때 발생 (409 Conflict)
-    OCR409(HttpStatus.CONFLICT, "OCR409", "OCR 처리가 아직 완료되지 않았습니다. 잠시 후 다시 시도해주세요.");
+    OCR409(HttpStatus.CONFLICT, "OCR429", "OCR 처리가 아직 완료되지 않았습니다. 잠시 후 다시 시도해주세요."), OCR429(, , );
 
     private final HttpStatus status;
     private final String code;
